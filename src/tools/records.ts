@@ -12,6 +12,81 @@ const fieldsParam = z
   .optional()
   .describe("Only return these fields, by name. Default: all visible fields. Use it to keep large tables small.");
 
+const MAX_BATCH = 100;
+
+const VALUE_FORMATS =
+  "Value formats by field type: text -> string; number and rating -> number; checkbox -> boolean; date -> ISO 8601 string; " +
+  "single select -> option name; multiple select -> array of option names; link -> {id: 'recXXX'} (an array of those if the field allows several); " +
+  "user -> {id, title} (array if several). Attachments are not set here. Computed fields (formula, lookup, rollup, auto number, " +
+  "created/modified time and by) are read-only: check isComputed in teable_list_fields.";
+
+const typecastParam = z
+  .boolean()
+  .default(false)
+  .describe("Let Teable convert values to the field's type, such as text to a select option or linked record. Off by default so mistakes fail loudly.");
+
+const fieldValues = z.record(z.string(), z.unknown());
+
+export function registerRecordWriteTools(r: Registrar): void {
+  r.tool({
+    name: "teable_create_records",
+    title: "Create records",
+    description:
+      `Add new records to a table. Each item in records maps field names to values, e.g. {"Name": "Ada", "Status": "Open"}; fields you leave out stay empty. Up to ${MAX_BATCH} per call. ` +
+      VALUE_FORMATS,
+    access: "write",
+    input: {
+      tableId,
+      records: z.array(fieldValues).min(1).max(MAX_BATCH).describe("The records to create, each a map of field name to value"),
+      typecast: typecastParam,
+    },
+    handler: async ({ tableId, records, typecast }, { client }) => {
+      const res = await client.post<{ records: unknown[] }>(path`/table/${tableId}/record`, {
+        fieldKeyType: "name",
+        typecast,
+        records: records.map((fields) => ({ fields })),
+      });
+      return { created: res.records.length, records: pick(res.records, ["id", "fields"]) };
+    },
+  });
+
+  r.tool({
+    name: "teable_update_records",
+    title: "Update records",
+    description:
+      `Change fields on existing records. Only the fields you give are changed; others keep their values. Up to ${MAX_BATCH} records per call. ` +
+      VALUE_FORMATS,
+    access: "write",
+    idempotent: true,
+    input: {
+      tableId,
+      records: z
+        .array(z.object({ id: recordId, fields: fieldValues.describe("Field name to new value, only for fields to change") }))
+        .min(1)
+        .max(MAX_BATCH)
+        .describe("The records to update"),
+      typecast: typecastParam,
+    },
+    handler: async ({ tableId, records, typecast }, { client }) => {
+      const res = await client.patch<unknown[]>(path`/table/${tableId}/record`, { fieldKeyType: "name", typecast, records });
+      return { updated: res.length, records: pick(res, ["id", "fields"]) };
+    },
+  });
+
+  r.tool({
+    name: "teable_delete_records",
+    title: "Delete records",
+    description:
+      `Delete records by id, up to ${MAX_BATCH} per call. Deleted records may not be recoverable, so confirm with the user which records will go before calling this.`,
+    access: "destructive",
+    input: { tableId, recordIds: z.array(recordId).min(1).max(MAX_BATCH).describe("Ids of the records to delete") },
+    handler: async ({ tableId, recordIds }, { client }) => {
+      await client.delete(path`/table/${tableId}/record`, { recordIds });
+      return { deleted: recordIds.length };
+    },
+  });
+}
+
 export function registerRecordReadTools(r: Registrar): void {
   r.tool({
     name: "teable_list_records",
