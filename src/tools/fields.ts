@@ -84,7 +84,9 @@ export function registerFieldWriteTools(r: Registrar): void {
     },
     handler: async ({ tableId, fieldId, name, description }, { client }) => {
       if (name === undefined && description === undefined) throw new Error("Provide a new name and/or description.");
-      return pick(await client.patch(path`/table/${tableId}/field/${fieldId}`, { name, description }), FIELD_KEYS);
+      // Teable answers this PATCH with an empty body, so read the field back to show what is stored.
+      await client.patch(path`/table/${tableId}/field/${fieldId}`, { name, description });
+      return pick(await client.get(path`/table/${tableId}/field/${fieldId}`), FIELD_KEYS);
     },
   });
 

@@ -24,13 +24,18 @@ describe("field write tools", () => {
   });
 
   it("updates name and description, and needs at least one", async () => {
-    const t = await connectToFakeTeable({ "PATCH /api/table/tbl1/field/fld1": created });
-    await t.call("teable_update_field", { tableId: "tbl1", fieldId: "fld1", name: "Prio" });
+    const t = await connectToFakeTeable({
+      // Teable's PATCH answers with an empty body; the tool reads the field back.
+      "PATCH /api/table/tbl1/field/fld1": null,
+      "GET /api/table/tbl1/field/fld1": { ...created, id: "fld1", name: "Prio" },
+    });
+    const res = await t.call("teable_update_field", { tableId: "tbl1", fieldId: "fld1", name: "Prio" });
     expect(t.calls[0]?.body).toEqual({ name: "Prio" });
+    expect(JSON.parse(t.text(res))).toMatchObject({ id: "fld1", name: "Prio" });
     const empty = await t.call("teable_update_field", { tableId: "tbl1", fieldId: "fld1" });
     expect(empty.isError).toBe(true);
     expect(t.text(empty)).toContain("name and/or description");
-    expect(t.calls).toHaveLength(1);
+    expect(t.calls).toHaveLength(2); // the PATCH and its read-back; the empty request made none
   });
 
   it("converts a field while keeping its name, description and constraints", async () => {
