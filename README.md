@@ -4,7 +4,7 @@ An [MCP](https://modelcontextprotocol.io) server that lets Claude work with your
 
 It runs on your own machine over stdio. Each teammate uses their own Teable token, so Claude sees and changes exactly what that person can.
 
-> **Status:** built from Teable's OpenAPI spec and docs, and tested against a mock Teable (unit tests, an in-memory MCP client, and a real stdio process). The read tools were also checked against our live server (`teable.modemobiledaily.com`) using a signed-in browser session: discovery, listing with projection, filters and sorting, counts, single records, history, comments and trash. **Not yet verified live:** bearer-token auth, and every tool that changes data (create/update/delete records, fields, tables, views, comments, attachments). Try those on a scratch table first, and run `npm run live-check` with your token.
+> **Status:** built from Teable's OpenAPI spec and docs, tested against a mock Teable (unit tests, an in-memory MCP client, and a real stdio process), and then run against our live server (`teable.modemobiledaily.com`) using a signed-in browser session. Reads were checked there on real tables. Every tool that changes data was run on a scratch table and cleaned up afterwards: create, rename and duplicate tables, create/update/convert/delete fields, create/update/delete records (including typecast), views, comments, attachments, trash and restore. **Not yet verified live:** bearer-token auth (the live runs used the browser's session cookie instead, so run `npm run live-check` with your own token first), and the generic `teable_api_request` tool (its endpoints were called directly).
 
 ## Set up
 
@@ -105,9 +105,9 @@ Teable has hundreds of endpoints (automations, dashboards, SQL queries, aggregat
 
 ## Known gaps
 
-- **Writes are unverified live.** Everything that creates, updates or deletes has only been tested against a mock. Try it on a scratch table first.
+- **Token auth is untested here.** Everything was exercised live with a browser session cookie, which hits the same endpoints, but a personal access token has its own scopes. A 403 from a tool usually means a missing scope; `teable_search_api` lists what each endpoint needs.
 - **Possibly older server version.** Our server lacks at least one newer endpoint (`teable_search_space` returns 404), so others may be missing too. The bundled endpoint index follows the current Teable API, so a result from `teable_search_api` may not exist on our server.
-- Editing a view's filter, sort or grouping has no dedicated tool yet; use the generic tools. The spec's request shapes for these are ambiguous, so check them on a scratch view first.
+- Editing a view's filter, sort or grouping has no dedicated tool. Use `teable_api_request` with the shapes below, which were checked live.
 - `search` inside `teable_list_records` is not exposed; use a `contains` filter.
 - A base shared directly with you may not appear under its space. `teable_list_bases` without a space lists everything you can reach.
 
@@ -119,6 +119,15 @@ Found by testing against our live server, and worth knowing if you call the API 
 - `isEmpty` and `isNotEmpty` conditions are rejected (HTTP 400) unless they carry `"value": null`.
 - Arrays in a query string work as `projection[]=a&projection[]=b`; filters and sorts are JSON strings.
 - Listing returns at most 100 records per call. Our server accepted 101 in testing, but Teable Cloud's newer keys are capped at 100, so the tool stays at 100.
+- Teable adds three blank rows to a new table unless the create request carries a `records` list. `teable_create_table` always sends one (empty unless you pass rows), so new tables start empty.
+- Attachment uploads answer with the whole record keyed by **field id**, including signed links; `teable_attach_file_from_url` returns just the file list. Teable downloads the URL itself, so a host that blocks server downloads (`upload.wikimedia.org` did) gives a bare HTTP 500.
+- `PATCH` on a field answers with an empty body, so `teable_update_field` reads the field back.
+- View filter, sort and group are separate `PUT` endpoints. Each wraps its value in a key, and they use field **ids**:
+  - `PUT /table/{tableId}/view/{viewId}/filter` with `{ "filter": { "conjunction": "and", "filterSet": [{ "fieldId": "fld...", "operator": "is", "value": "Open" }] } }`
+  - `PUT /table/{tableId}/view/{viewId}/sort` with `{ "sort": { "sortObjs": [{ "fieldId": "fld...", "order": "desc" }], "manualSort": false } }`
+  - `PUT /table/{tableId}/view/{viewId}/group` with `{ "group": [{ "fieldId": "fld...", "order": "asc" }] }`
+
+  After that, `teable_list_records` with a `viewId` applies the saved filter and sort.
 
 ## Development
 
