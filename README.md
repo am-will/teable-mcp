@@ -4,7 +4,7 @@ An [MCP](https://modelcontextprotocol.io) server that lets Claude work with your
 
 It runs on your own machine over stdio. Each teammate uses their own Teable token, so Claude sees and changes exactly what that person can.
 
-> **Status:** built from Teable's OpenAPI spec and docs, and tested against a mock Teable (unit tests, an in-memory MCP client, and a real stdio process). It has not yet been run against a live Teable. Run `npm run live-check` with your token (below) to confirm it works with your instance before relying on it.
+> **Status:** built from Teable's OpenAPI spec and docs, and tested against a mock Teable (unit tests, an in-memory MCP client, and a real stdio process). The read tools were also checked against our live server (`teable.modemobiledaily.com`) using a signed-in browser session: discovery, listing with projection, filters and sorting, counts, single records, history, comments and trash. **Not yet verified live:** bearer-token auth, and every tool that changes data (create/update/delete records, fields, tables, views, comments, attachments). Try those on a scratch table first, and run `npm run live-check` with your token.
 
 ## Set up
 
@@ -19,7 +19,7 @@ npm run build
 
 ### 1. Create a Teable token
 
-Create a personal access token in Teable ([how](https://help.teable.ai/en/api-doc/token)). Limit it to the bases Claude should reach, and grant only the scopes you need:
+Create a personal access token in our Teable at `https://teable.modemobiledaily.com` ([how](https://help.teable.ai/en/api-doc/token)). Limit it to the bases Claude should reach, and grant only the scopes you need:
 
 - **Read only:** `space|read`, `base|read`, `table|read`, `field|read`, `view|read`, `record|read` (and `table_record_history|read` for record history)
 - **Editing:** add the matching create, update and delete scopes, plus `record|comment` for comments
@@ -29,7 +29,7 @@ A call that the token's scopes don't allow returns a 403 with a hint. `teable_se
 ### 2. Check it works
 
 ```bash
-TEABLE_TOKEN=your-token npm run live-check
+TEABLE_TOKEN=your-token TEABLE_BASE_URL=https://teable.modemobiledaily.com npm run live-check
 ```
 
 This calls only read tools, in read-only mode, and prints counts and structure names, never record contents.
@@ -39,7 +39,7 @@ This calls only read tools, in read-only mode, and prints counts and structure n
 **Claude Code**
 
 ```bash
-claude mcp add teable --scope user -e TEABLE_TOKEN=your-token -- node /absolute/path/to/teable-mcp/dist/index.js
+claude mcp add teable --scope user -e TEABLE_TOKEN=your-token -e TEABLE_BASE_URL=https://teable.modemobiledaily.com -- node /absolute/path/to/teable-mcp/dist/index.js
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`)
@@ -50,7 +50,10 @@ claude mcp add teable --scope user -e TEABLE_TOKEN=your-token -- node /absolute/
     "teable": {
       "command": "node",
       "args": ["/absolute/path/to/teable-mcp/dist/index.js"],
-      "env": { "TEABLE_TOKEN": "your-token" }
+      "env": {
+        "TEABLE_TOKEN": "your-token",
+        "TEABLE_BASE_URL": "https://teable.modemobiledaily.com"
+      }
     }
   }
 }
@@ -63,7 +66,7 @@ Then ask Claude something like "list my Teable bases" or "how many open leads ar
 | Variable | Required | Meaning |
 | --- | --- | --- |
 | `TEABLE_TOKEN` | yes | Teable personal access token (`TEABLE_API_KEY` also works) |
-| `TEABLE_BASE_URL` | no | Defaults to `https://app.teable.ai`. Set it for a self-hosted Teable. Must be `https`, except for `localhost`. |
+| `TEABLE_BASE_URL` | for us | Our server is `https://teable.modemobiledaily.com`. Defaults to Teable Cloud, `https://app.teable.ai`, if unset. Must be `https`, except for `localhost`. |
 | `TEABLE_READ_ONLY` | no | `true` removes every tool that changes data, so Claude cannot write even if asked |
 
 ## Tools
@@ -102,9 +105,20 @@ Teable has hundreds of endpoints (automations, dashboards, SQL queries, aggregat
 
 ## Known gaps
 
-- Editing a view's filter, sort or grouping has no dedicated tool yet; use the generic tools. The spec's request shapes for these are ambiguous, so they are worth confirming against a live Teable first.
-- `search` inside `teable_list_records` is not exposed; use a `contains` filter, or `teable_search_space`.
-- Query encoding (`projection[]=...`, JSON `filter` and `orderBy`) follows Teable's docs. `npm run live-check` exercises each of them.
+- **Writes are unverified live.** Everything that creates, updates or deletes has only been tested against a mock. Try it on a scratch table first.
+- **Possibly older server version.** Our server lacks at least one newer endpoint (`teable_search_space` returns 404), so others may be missing too. The bundled endpoint index follows the current Teable API, so a result from `teable_search_api` may not exist on our server.
+- Editing a view's filter, sort or grouping has no dedicated tool yet; use the generic tools. The spec's request shapes for these are ambiguous, so check them on a scratch view first.
+- `search` inside `teable_list_records` is not exposed; use a `contains` filter.
+- A base shared directly with you may not appear under its space. `teable_list_bases` without a space lists everything you can reach.
+
+### Quirks of Teable the server already handles
+
+Found by testing against our live server, and worth knowing if you call the API yourself:
+
+- A filter's `fieldId` is read according to `fieldKeyType`. With names (what this server uses) it must hold the field **name**; an id there is **silently ignored** and every record comes back. The row-count endpoint has no `fieldKeyType` and wants ids. The server resolves this for you, and `npm run live-check` fails if a filter is ever ignored.
+- `isEmpty` and `isNotEmpty` conditions are rejected (HTTP 400) unless they carry `"value": null`.
+- Arrays in a query string work as `projection[]=a&projection[]=b`; filters and sorts are JSON strings.
+- Listing returns at most 100 records per call. Our server accepted 101 in testing, but Teable Cloud's newer keys are capped at 100, so the tool stays at 100.
 
 ## Development
 
