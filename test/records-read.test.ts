@@ -33,11 +33,12 @@ describe("teable_list_records", () => {
     const q = query(t.calls[1]);
     expect(q.get("viewId")).toBe("viw1");
     expect(q.getAll("projection[]")).toEqual(["Status", "Owner"]);
+    // Records are keyed by name, and Teable ignores an id in a filter's fieldId in that mode, so names go out.
     expect(JSON.parse(q.get("filter") ?? "")).toEqual({
       conjunction: "and",
-      filterSet: [{ fieldId: "fld1", operator: "is", value: "Open" }],
+      filterSet: [{ fieldId: "Status", operator: "is", value: "Open" }],
     });
-    expect(q.get("orderBy")).toBe('[{"fieldId":"fld1","order":"desc"}]');
+    expect(q.get("orderBy")).toBe('[{"fieldId":"Status","order":"desc"}]');
   });
 
   it("offers nextSkip only when a full page came back", async () => {
@@ -81,7 +82,8 @@ describe("other record reads", () => {
       filter: { conjunction: "and", filterSet: [{ field: "Status", operator: "is", value: "Open" }] },
     });
     expect(JSON.parse(t.text(res))).toEqual({ rowCount: 7 });
-    expect(query(t.calls[1]).has("filter")).toBe(true);
+    // The count endpoint has no fieldKeyType, so its filter uses field ids.
+    expect(JSON.parse(query(t.calls[1]).get("filter") ?? "").filterSet[0].fieldId).toBe("fld1");
   });
 
   it("teable_get_record_history passes the cursor", async () => {

@@ -106,7 +106,7 @@ export function registerRecordReadTools(r: Registrar): void {
       skip: z.number().int().min(0).default(0).describe("How many records to skip, for paging"),
     },
     handler: async ({ tableId, viewId, fields, filter, orderBy, take, skip }, { client }) => {
-      const query = await buildRecordQuery(client, tableId, { filter, orderBy });
+      const query = await buildRecordQuery(client, tableId, { filter, orderBy }, "name");
       const res = await client.get<{ records: unknown[] }>(path`/table/${tableId}/record`, {
         viewId,
         projection: fields,
@@ -142,7 +142,8 @@ export function registerRecordReadTools(r: Registrar): void {
     access: "read",
     input: { tableId, viewId: viewId.optional(), filter: filterParam.optional() },
     handler: async ({ tableId, viewId, filter }, { client }) => {
-      const query = await buildRecordQuery(client, tableId, { filter });
+      // row-count has no fieldKeyType option, so its filter is written with field ids.
+      const query = await buildRecordQuery(client, tableId, { filter }, "id");
       return client.get(path`/table/${tableId}/aggregation/row-count`, { viewId, filter: query.filter });
     },
   });

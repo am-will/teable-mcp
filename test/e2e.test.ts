@@ -82,7 +82,7 @@ describe("stdio end to end", () => {
       expect(q.getAll("projection[]")).toEqual(["Status"]);
       expect(JSON.parse(q.get("filter") ?? "")).toEqual({
         conjunction: "and",
-        filterSet: [{ fieldId: "fld1", operator: "is", value: "Open" }],
+        filterSet: [{ fieldId: "Status", operator: "is", value: "Open" }],
       });
       expect(q.get("take")).toBe("5");
 
