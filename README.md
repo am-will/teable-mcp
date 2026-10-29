@@ -4,11 +4,24 @@ An [MCP](https://modelcontextprotocol.io) server that lets Claude work with your
 
 It runs on your own machine over stdio. Each teammate uses their own Teable token, so Claude sees and changes exactly what that person can.
 
-> **Status:** built from Teable's OpenAPI spec and docs, tested against a mock Teable (unit tests, an in-memory MCP client, and a real stdio process), and then run against our live server (`teable.modemobiledaily.com`) using a signed-in browser session. Reads were checked there on real tables. Every tool that changes data was run on a scratch table and cleaned up afterwards: create, rename and duplicate tables, create/update/convert/delete fields, create/update/delete records (including typecast), views, comments, attachments, trash and restore. **Not yet verified live:** bearer-token auth (the live runs used the browser's session cookie instead, so run `npm run live-check` with your own token first), and the generic `teable_api_request` tool (its endpoints were called directly).
+> **Where it stands:** every tool has been run against our real Teable, on throwaway tables that were deleted afterwards, and it all worked. The one thing not tried yet is a personal access token (the testing used a browser login), so the check in step 3 matters the first time.
 
-## Set up
+## Get it running
 
-You need Node 20.10 or newer.
+You need Node 20.10 or newer, and access to this repo on GitHub. It takes about five minutes.
+
+### 1. Make a token in Teable
+
+Go to <https://teable.modemobiledaily.com/setting/personal-access-token> and hit **Create new token**.
+
+- Name it something like `claude`.
+- Limit it to the bases you want Claude to see.
+- Tick the **read** scopes so Claude can look around. Add the **create / update / delete** ones only if you want Claude to edit things, and **comment** if you want it to comment.
+- Copy the token when it shows up. Treat it like a password: don't paste it in Slack, don't commit it.
+
+Everyone makes their own token. That way Claude can only do what you can do.
+
+### 2. Install it
 
 ```bash
 git clone https://github.com/am-will/teable-mcp.git
@@ -17,24 +30,15 @@ npm install
 npm run build
 ```
 
-### 1. Create a Teable token
-
-Create a personal access token in our Teable at `https://teable.modemobiledaily.com` ([how](https://help.teable.ai/en/api-doc/token)). Limit it to the bases Claude should reach, and grant only the scopes you need:
-
-- **Read only:** `space|read`, `base|read`, `table|read`, `field|read`, `view|read`, `record|read` (and `table_record_history|read` for record history)
-- **Editing:** add the matching create, update and delete scopes, plus `record|comment` for comments
-
-A call that the token's scopes don't allow returns a 403 with a hint. `teable_search_api` lists the scopes each endpoint needs.
-
-### 2. Check it works
+### 3. Check the token works
 
 ```bash
 TEABLE_TOKEN=your-token TEABLE_BASE_URL=https://teable.modemobiledaily.com npm run live-check
 ```
 
-This calls only read tools, in read-only mode, and prints counts and structure names, never record contents.
+This only reads. It prints counts and names, never what's inside your records. A `401` means the token is wrong. A `403` means it's missing a scope.
 
-### 3. Add it to Claude
+### 4. Plug it into Claude
 
 **Claude Code**
 
@@ -59,7 +63,36 @@ claude mcp add teable --scope user -e TEABLE_TOKEN=your-token -e TEABLE_BASE_URL
 }
 ```
 
-Then ask Claude something like "list my Teable bases" or "how many open leads are there?".
+Restart Claude, then ask it "list my Teable bases". If you only want Claude to look, add `TEABLE_READ_ONLY=true` next to the other two settings. Then it can't change anything, even if you ask.
+
+### Updating later
+
+```bash
+git pull && npm install && npm run build
+```
+
+Then restart Claude.
+
+## Give this to your agent
+
+Don't want to do the steps yourself? Paste this into Claude Code (or any coding agent) and let it do them:
+
+```text
+Set up the Teable MCP server for me so Claude can use our Teable.
+
+Repo: https://github.com/am-will/teable-mcp (it's private, so use my GitHub login, e.g. `gh repo clone am-will/teable-mcp`)
+Our Teable: https://teable.modemobiledaily.com
+
+1. Check Node is 20.10 or newer. If it isn't, tell me and stop.
+2. Clone the repo somewhere permanent (like ~/code/teable-mcp), then run `npm install` and `npm run build`.
+3. Ask me for my Teable personal access token. I make it at https://teable.modemobiledaily.com/setting/personal-access-token. Never print it back to me, never write it into a file in the repo, and never commit it.
+4. Ask me if I want read-only mode (it adds TEABLE_READ_ONLY=true).
+5. Run `TEABLE_TOKEN=<token> TEABLE_BASE_URL=https://teable.modemobiledaily.com npm run live-check` and show me the result. If it fails, explain it in plain words (401 = bad token, 403 = missing scope) and stop.
+6. Add it to Claude with `claude mcp add teable --scope user -e TEABLE_TOKEN=<token> -e TEABLE_BASE_URL=https://teable.modemobiledaily.com -- node <absolute path to the clone>/dist/index.js` (plus `-e TEABLE_READ_ONLY=true` if I said yes). If I use Claude Desktop instead, add the same thing under mcpServers in claude_desktop_config.json.
+7. Tell me to restart Claude, then to ask it "list my Teable bases" to test it.
+
+Ask me before doing anything that isn't on this list.
+```
 
 ## Configuration
 
