@@ -16,6 +16,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "build:index": "npm run build && node scripts/build-endpoint-index.mjs",
+    "live-check": "npm run build --silent && node scripts/live-check.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "start": "node dist/index.js"
