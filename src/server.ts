@@ -3,6 +3,7 @@ import { TeableClient } from "./client.js";
 import type { Config } from "./config.js";
 import { registerAccountTools } from "./tools/account.js";
 import { createRegistrar } from "./tools/define.js";
+import { registerTableTools } from "./tools/tables.js";
 import { registerWorkspaceTools } from "./tools/workspace.js";
 
 export const SERVER_INSTRUCTIONS = `Teable is a no-code database. Data is organized as space (spc...) > base (bse...) > table (tbl...), and a table holds fields (fld...), records (rec...) and views (viw...).
@@ -13,5 +14,6 @@ export function createTeableServer(config: Config, client: TeableClient = new Te
   const registrar = createRegistrar(server, { client }, { readOnly: config.readOnly });
   registerAccountTools(registrar);
   registerWorkspaceTools(registrar);
+  registerTableTools(registrar);
   return server;
 }
