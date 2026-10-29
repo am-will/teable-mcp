@@ -46,6 +46,14 @@ describe("workspace tools", () => {
     expect(t.calls[0]?.url).toBe("/api/space/spc1/search?search=invoices&type=table");
   });
 
+  it("explains a 404 from space search, which older self-hosted Teables lack", async () => {
+    const t = await connectToFakeTeable();
+    const res = await t.call("teable_search_space", { spaceId: "spc1", search: "x" });
+    expect(res.isError).toBe(true);
+    expect(t.text(res)).toContain("older self-hosted versions");
+    expect(t.text(res)).toContain("teable_list_bases");
+  });
+
   it("rejects an empty id before calling the API", async () => {
     const t = await connectToFakeTeable();
     const res = await t.call("teable_get_base", { baseId: "" });

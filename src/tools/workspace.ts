@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { path } from "../client.js";
+import { path, TeableApiError } from "../client.js";
 import type { Registrar } from "./define.js";
 import { baseId, pick, spaceId } from "./util.js";
 
@@ -21,7 +21,8 @@ export function registerWorkspaceTools(r: Registrar): void {
     name: "teable_list_bases",
     title: "List bases",
     description:
-      "List bases (databases). Pass spaceId to list the bases in one space; omit it to list every base the token can access across all spaces. A base contains tables.",
+      "List bases (databases). Pass spaceId to list the bases in one space; omit it to list every base the token can access across all spaces. " +
+      "Prefer omitting it: a base shared with you directly does not always appear under its space. A base contains tables.",
     access: "read",
     input: { spaceId: spaceId.optional() },
     handler: async ({ spaceId }, { client }) =>
@@ -53,6 +54,18 @@ export function registerWorkspaceTools(r: Registrar): void {
       pageSize: z.number().int().min(1).max(100).optional().describe("Results per page"),
       cursor: z.string().optional().describe("nextCursor from a previous search, to get the next page"),
     },
-    handler: ({ spaceId, ...query }, { client }) => client.get(path`/space/${spaceId}/search`, query),
+    handler: async ({ spaceId, ...query }, { client }) => {
+      try {
+        return await client.get(path`/space/${spaceId}/search`, query);
+      } catch (err) {
+        if (err instanceof TeableApiError && err.status === 404) {
+          throw new Error(
+            "Not found: either the space id is wrong, or this Teable version has no space search (older self-hosted versions lack it). " +
+              "Browse with teable_list_bases and teable_list_tables instead.",
+          );
+        }
+        throw err;
+      }
+    },
   });
 }
