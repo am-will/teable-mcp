@@ -15,8 +15,12 @@ export const BLOCKED_PREFIXES = [
 /** The only /auth endpoints that are safe to read. */
 const ALLOWED_AUTH_GETS = new Set(["/auth/user", "/auth/user/me"]);
 
-/** Path segments that mean sharing or access control. Changing them is blocked, reading them is fine. */
+/** Path segments for sharing, access control, billing and org administration. Changing them is blocked, reading is fine. */
 const ACCESS_CONTROL_SEGMENTS = new Set([
+  "billing",
+  "organization",
+  "regenerate-secret",
+  "claw",
   "collaborator",
   "collaborators",
   "invitation",
@@ -71,6 +75,8 @@ export function checkApiRequest(method: string, path: string): void {
   }
 
   if (verb !== "GET" && segments.some((s) => ACCESS_CONTROL_SEGMENTS.has(s))) {
-    throw new ApiPolicyError("Changing sharing, collaborators, invitations or access settings is not available through this connector. Do it in the Teable app.");
+    throw new ApiPolicyError(
+      "Changing sharing, collaborators, invitations, access settings, billing or organization admin is not available through this connector. Do it in the Teable app.",
+    );
   }
 }

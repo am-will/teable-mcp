@@ -94,6 +94,11 @@ describe("checkApiRequest", () => {
     ["POST", "/base/bse1/publish"],
     ["POST", "/space/spc1/integration"],
     ["PUT", "/base-share/x"],
+    ["POST", "/space/spc1/billing/attachment-size/refresh"],
+    ["POST", "/organization/org1/department"],
+    ["DELETE", "/organization/org1/department-user"],
+    ["POST", "/plugin/plg1/regenerate-secret"],
+    ["POST", "/space/spc1/claw"],
   ])("blocks access-control change: %s %s", (method, path) => {
     expect(() => checkApiRequest(method, path)).toThrow(/sharing, collaborators/);
   });
@@ -101,5 +106,6 @@ describe("checkApiRequest", () => {
   it("allows reading collaborators and sharing state", () => {
     expect(() => checkApiRequest("GET", "/base/bse1/collaborators")).not.toThrow();
     expect(() => checkApiRequest("GET", "/space/spc1/invitation/link")).not.toThrow();
+    expect(() => checkApiRequest("GET", "/space/spc1/billing/credit-summary")).not.toThrow();
   });
 });
