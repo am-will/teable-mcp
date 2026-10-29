@@ -47,10 +47,13 @@ describe("path", () => {
 });
 
 describe("buildQuery", () => {
-  it("repeats array keys, stringifies objects and drops nullish values", () => {
+  it("uses bracket notation for arrays, stringifies objects and drops nullish values", () => {
     expect(
       buildQuery({ take: 10, projection: ["a", "b"], filter: { conjunction: "and" }, skip: undefined, x: null, flag: false }),
-    ).toBe("?take=10&projection=a&projection=b&filter=%7B%22conjunction%22%3A%22and%22%7D&flag=false");
+    ).toBe("?take=10&projection%5B%5D=a&projection%5B%5D=b&filter=%7B%22conjunction%22%3A%22and%22%7D&flag=false");
+  });
+  it("keeps a one-item array an array", () => {
+    expect(buildQuery({ recordIds: ["rec1"] })).toBe("?recordIds%5B%5D=rec1");
   });
   it("returns an empty string when there is nothing to send", () => {
     expect(buildQuery(undefined)).toBe("");

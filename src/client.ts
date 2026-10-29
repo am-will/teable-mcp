@@ -34,13 +34,16 @@ function queryValue(v: unknown): string {
   return typeof v === "object" ? JSON.stringify(v) : String(v);
 }
 
-/** Arrays become repeated keys, objects become JSON strings, null/undefined are dropped. */
+/**
+ * Arrays use bracket notation (`ids[]=a&ids[]=b`, as in Teable's docs) so a one-item array stays an array on the
+ * server. Objects become JSON strings. null and undefined are dropped.
+ */
 export function buildQuery(query: Record<string, unknown> | undefined): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value === undefined || value === null) continue;
     if (Array.isArray(value)) {
-      for (const item of value) params.append(key, queryValue(item));
+      for (const item of value) params.append(`${key}[]`, queryValue(item));
     } else {
       params.append(key, queryValue(value));
     }
