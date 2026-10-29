@@ -70,7 +70,7 @@ export function checkApiRequest(method: string, path: string): void {
     throw new ApiPolicyError(`${path} is not available through this connector (accounts, tokens, billing and admin are out of scope).`);
   }
 
-  if (verb === "DELETE" && (segments.includes("permanent") || segments[0] === "trash" || segments.includes("archive"))) {
+  if (verb === "DELETE" && (segments.includes("permanent") || segments[0] === "trash" || segments.some((s) => s.startsWith("archive")))) {
     throw new ApiPolicyError("Permanent deletion is not available through this connector. Do it in the Teable app so it is a deliberate action.");
   }
 

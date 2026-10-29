@@ -75,6 +75,7 @@ describe("checkApiRequest", () => {
     "/trash/reset-items",
     "/table/tbl1/archive/items",
     "/table/tbl1/archive/reset",
+    "/chat/archived/cht1",
   ])("blocks permanent deletion: DELETE %s", (path) => {
     expect(() => checkApiRequest("DELETE", path)).toThrow(/Permanent deletion/);
   });
