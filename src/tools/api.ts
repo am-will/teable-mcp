@@ -1,5 +1,6 @@
 import { z } from "zod";
 import indexData from "../generated/endpoints.json" with { type: "json" };
+import { checkApiRequest, normalizeApiPath } from "./api-policy.js";
 import type { Registrar } from "./define.js";
 
 /** One row of the generated index; see scripts/build-endpoint-index.mjs. */
@@ -49,6 +50,50 @@ function describe(e: Endpoint) {
     ...(e.q.length > 0 && { query: e.q.join(", ") }),
     ...(e.b && { body: e.b }),
   };
+}
+
+const pathParam = z
+  .string()
+  .describe("Endpoint path with real ids filled in, e.g. /table/tblXXXX/aggregation/row-count. A leading /api is optional.");
+const queryParam = z
+  .record(z.string(), z.unknown())
+  .optional()
+  .describe("Query parameters. Arrays are sent as key[]=value and objects as JSON strings.");
+
+export function registerApiCallTools(r: Registrar): void {
+  r.tool({
+    name: "teable_api_get",
+    title: "Call a Teable API endpoint (read)",
+    description:
+      "Make a GET request to any Teable API endpoint that the dedicated tools do not cover. Find the endpoint and its parameters with teable_search_api first. Read-only.",
+    access: "read",
+    input: { path: pathParam, query: queryParam },
+    handler: ({ path, query }, { client }) => {
+      const p = normalizeApiPath(path);
+      checkApiRequest("GET", p);
+      return client.get(p, query);
+    },
+  });
+
+  r.tool({
+    name: "teable_api_request",
+    title: "Call a Teable API endpoint (change data)",
+    description:
+      "Make a POST, PUT, PATCH or DELETE request to any Teable API endpoint that the dedicated tools do not cover. Find the endpoint and its body with teable_search_api first, and confirm with the user before changing or deleting anything. " +
+      "Account, token, billing and admin areas, permanent deletion, and sharing or access-control changes are refused.",
+    access: "destructive",
+    input: {
+      method: z.enum(["POST", "PUT", "PATCH", "DELETE"]),
+      path: pathParam,
+      query: queryParam,
+      body: z.record(z.string(), z.unknown()).optional().describe("JSON request body"),
+    },
+    handler: ({ method, path, query, body }, { client }) => {
+      const p = normalizeApiPath(path);
+      checkApiRequest(method, p);
+      return client.request(method, p, { query, body });
+    },
+  });
 }
 
 export function registerApiSearchTool(r: Registrar): void {

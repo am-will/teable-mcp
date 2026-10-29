@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { TeableClient } from "./client.js";
 import type { Config } from "./config.js";
 import { registerAccountTools } from "./tools/account.js";
-import { registerApiSearchTool } from "./tools/api.js";
+import { registerApiCallTools, registerApiSearchTool } from "./tools/api.js";
 import { registerAttachmentTools } from "./tools/attachments.js";
 import { registerCommentTools } from "./tools/comments.js";
 import { createRegistrar } from "./tools/define.js";
@@ -32,5 +32,6 @@ export function createTeableServer(config: Config, client: TeableClient = new Te
   registerTrashTools(registrar);
   registerAttachmentTools(registrar);
   registerApiSearchTool(registrar);
+  registerApiCallTools(registrar);
   return server;
 }
