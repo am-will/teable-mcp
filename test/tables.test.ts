@@ -26,7 +26,7 @@ describe("table tools", () => {
       name: "Leads",
       fields: [{ name: "Name", type: "singleLineText" }],
     });
-    expect(t.calls[0]?.body).toEqual({ name: "Leads", fields: [{ name: "Name", type: "singleLineText" }] });
+    expect(t.calls[0]?.body).toEqual({ name: "Leads", fields: [{ name: "Name", type: "singleLineText" }], records: [] });
     expect(JSON.parse(t.text(res))).toEqual({
       id: "tbl1",
       name: "Leads",
@@ -47,6 +47,19 @@ describe("table tools", () => {
     const dup = await t.call("teable_duplicate_table", { baseId: "bse1", tableId: "tbl1", name: "Copy" });
     expect(t.calls.map((c) => c.body)).toEqual([{ name: "Clients" }, { description: "" }, { name: "Copy", includeRecords: false }]);
     expect(JSON.parse(t.text(dup)).id).toBe("tbl2");
+  });
+
+  it("seeds initial rows keyed by field name, and otherwise sends none so no blank starter rows appear", async () => {
+    const t = await connectToFakeTeable({ "POST /api/base/bse1/table": { id: "tbl1", name: "Leads", fields: [] } });
+    await t.call("teable_create_table", {
+      baseId: "bse1",
+      name: "Leads",
+      fields: [{ name: "Name", type: "singleLineText" }],
+      records: [{ Name: "Ada" }, { Name: "Grace" }],
+    });
+    expect(t.calls[0]?.body).toMatchObject({ records: [{ fields: { Name: "Ada" } }, { fields: { Name: "Grace" } }] });
+    const tooMany = await t.call("teable_create_table", { baseId: "bse1", name: "X", records: Array.from({ length: 101 }, () => ({})) });
+    expect(tooMany.isError).toBe(true);
   });
 
   it("deletes a table", async () => {

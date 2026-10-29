@@ -30,7 +30,8 @@ export function registerTableTools(r: Registrar): void {
     name: "teable_create_table",
     title: "Create table",
     description:
-      "Create a table in a base. Optionally pass fields to define the schema up front, each as {name, type, options?} using the same shape as teable_create_field. Returns the new table with its fields.",
+      "Create a table in a base. Optionally pass fields to define the schema up front, each as {name, type, options?} using the same shape as teable_create_field, and records to fill it. " +
+      "The table starts empty unless you pass records (Teable itself would add three blank rows). Returns the new table with its fields.",
     access: "write",
     input: {
       baseId,
@@ -40,8 +41,15 @@ export function registerTableTools(r: Registrar): void {
         .array(z.record(z.string(), z.unknown()))
         .optional()
         .describe("Field definitions, e.g. [{ name: 'Email', type: 'singleLineText' }]. The first one becomes the primary field."),
+      records: z
+        .array(z.record(z.string(), z.unknown()))
+        .max(100)
+        .optional()
+        .describe("Initial rows as field name to value objects, e.g. [{ Email: 'a@b.co' }]. Needs fields. Add more later with teable_create_records."),
     },
-    handler: async ({ baseId, ...body }, { client }) => {
+    handler: async ({ baseId, records, ...rest }, { client }) => {
+      // Without an explicit list Teable adds three blank starter rows, which nobody asks for.
+      const body = { ...rest, records: (records ?? []).map((fields) => ({ fields })) };
       const table = (await client.post(path`/base/${baseId}/table`, body)) as Record<string, unknown>;
       return { ...(pick(table, TABLE_KEYS) as object), fields: pick(table.fields, FIELD_SUMMARY_KEYS) };
     },
