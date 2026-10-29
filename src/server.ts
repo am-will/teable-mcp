@@ -7,6 +7,7 @@ import { createRegistrar } from "./tools/define.js";
 import { registerFieldTools, registerFieldWriteTools } from "./tools/fields.js";
 import { registerRecordReadTools, registerRecordWriteTools } from "./tools/records.js";
 import { registerTableTools } from "./tools/tables.js";
+import { registerTrashTools } from "./tools/trash.js";
 import { registerViewTools, registerViewWriteTools } from "./tools/views.js";
 import { registerWorkspaceTools } from "./tools/workspace.js";
 
@@ -26,5 +27,6 @@ export function createTeableServer(config: Config, client: TeableClient = new Te
   registerRecordReadTools(registrar);
   registerRecordWriteTools(registrar);
   registerCommentTools(registrar);
+  registerTrashTools(registrar);
   return server;
 }
