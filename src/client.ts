@@ -15,6 +15,8 @@ export class TeableApiError extends Error {
 export interface RequestOptions {
   query?: Record<string, unknown>;
   body?: unknown;
+  /** Sent as multipart/form-data; takes the place of `body`. */
+  form?: FormData;
   signal?: AbortSignal;
 }
 
@@ -76,6 +78,9 @@ export class TeableClient {
   post<T = unknown>(p: string, body?: unknown, query?: Record<string, unknown>) {
     return this.request<T>("POST", p, { body, query });
   }
+  postForm<T = unknown>(p: string, form: FormData) {
+    return this.request<T>("POST", p, { form });
+  }
   put<T = unknown>(p: string, body?: unknown) {
     return this.request<T>("PUT", p, { body });
   }
@@ -95,8 +100,10 @@ export class TeableClient {
       Accept: "application/json",
       "User-Agent": "teable-mcp",
     };
-    let payload: string | undefined;
-    if (options.body !== undefined) {
+    let payload: string | FormData | undefined;
+    if (options.form) {
+      payload = options.form; // fetch sets the multipart content-type and boundary itself
+    } else if (options.body !== undefined) {
       headers["Content-Type"] = "application/json";
       payload = JSON.stringify(options.body);
     }

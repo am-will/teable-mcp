@@ -78,6 +78,15 @@ describe("TeableClient", () => {
     expect(JSON.parse(seen[0]?.body ?? "")).toEqual({ records: [] });
   });
 
+  it("sends multipart forms without forcing a JSON content-type", async () => {
+    const form = new FormData();
+    form.set("fileUrl", "https://files.test/a.pdf");
+    await client().postForm("/table/tbl1/record/rec1/fld1/uploadAttachment", form);
+    expect(seen[0]?.headers["content-type"]).toMatch(/^multipart\/form-data; boundary=/);
+    expect(seen[0]?.body).toContain('name="fileUrl"');
+    expect(seen[0]?.body).toContain("https://files.test/a.pdf");
+  });
+
   it("returns null for empty responses", async () => {
     handler = (_req, res) => {
       res.statusCode = 204;
