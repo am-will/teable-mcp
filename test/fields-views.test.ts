@@ -43,6 +43,38 @@ describe("field tools", () => {
   });
 });
 
+describe("view write tools", () => {
+  it("creates, renames and deletes views", async () => {
+    const t = await connectToFakeTeable({
+      "POST /api/table/tbl1/view": { ...view, id: "viw2", name: "Board", type: "kanban" },
+      "PUT /api/table/tbl1/view/viw2/name": null,
+      "DELETE /api/table/tbl1/view/viw2": null,
+    });
+    const created = await t.call("teable_create_view", { tableId: "tbl1", name: "Board", type: "kanban" });
+    expect(t.calls[0]?.body).toEqual({ name: "Board", type: "kanban" });
+    expect(JSON.parse(t.text(created))).toMatchObject({ id: "viw2", type: "kanban" });
+    expect(JSON.parse(t.text(created)).columnMeta).toBeUndefined();
+
+    await t.call("teable_rename_view", { tableId: "tbl1", viewId: "viw2", name: "Pipeline" });
+    expect(t.calls[1]?.body).toEqual({ name: "Pipeline" });
+
+    const deleted = await t.call("teable_delete_view", { tableId: "tbl1", viewId: "viw2" });
+    expect(JSON.parse(t.text(deleted))).toEqual({ deleted: "viw2" });
+  });
+
+  it("defaults to a grid view and hides writes in read-only mode", async () => {
+    const t = await connectToFakeTeable({ "POST /api/table/tbl1/view": view });
+    await t.call("teable_create_view", { tableId: "tbl1", name: "All" });
+    expect(t.calls[0]?.body).toEqual({ name: "All", type: "grid" });
+
+    const ro = await connectToFakeTeable({}, { readOnly: true });
+    const names = (await ro.client.listTools()).tools.map((x) => x.name);
+    expect(names).toContain("teable_list_views");
+    expect(names).not.toContain("teable_create_view");
+    expect(names).not.toContain("teable_delete_view");
+  });
+});
+
 describe("view tools", () => {
   it("lists and gets views without the bulky columnMeta", async () => {
     const t = await connectToFakeTeable({ "GET /api/table/tbl1/view": [view], "GET /api/table/tbl1/view/viw1": view });
