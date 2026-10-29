@@ -15,7 +15,7 @@ type Reply = unknown | ((call: RecordedCall) => unknown);
 
 /**
  * Runs the real server against a fake Teable: `routes` maps "METHOD /api/path?query" to a JSON reply
- * (or a function returning one). Unmatched requests answer 404 so missing routes show up in tests.
+ * (or a function returning one, or a ready-made Response for error statuses). Unmatched requests answer 404 so missing routes show up in tests.
  */
 export async function connectToFakeTeable(routes: Record<string, Reply> = {}, config: Partial<Config> = {}) {
   const calls: RecordedCall[] = [];
@@ -36,6 +36,7 @@ export async function connectToFakeTeable(routes: Record<string, Reply> = {}, co
     const reply = key in routes ? routes[key] : `${call.method} ${url.pathname}` in routes ? routes[`${call.method} ${url.pathname}`] : undefined;
     if (reply === undefined) return new Response(JSON.stringify({ message: `no fake route for ${key}` }), { status: 404 });
     const value = typeof reply === "function" ? (reply as (c: RecordedCall) => unknown)(call) : reply;
+    if (value instanceof Response) return value;
     return value === null ? new Response(null, { status: 204 }) : Response.json(value);
   };
 
