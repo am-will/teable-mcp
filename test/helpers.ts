@@ -24,7 +24,12 @@ export async function connectToFakeTeable(routes: Record<string, Reply> = {}, co
     const call: RecordedCall = {
       method: init?.method ?? "GET",
       url: url.pathname + url.search,
-      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+      body:
+        typeof init?.body === "string"
+          ? JSON.parse(init.body)
+          : init?.body instanceof FormData
+            ? Object.fromEntries(init.body.entries())
+            : undefined,
     };
     calls.push(call);
     const key = `${call.method} ${call.url}`;
