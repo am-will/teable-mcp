@@ -3,7 +3,7 @@ import { TeableClient } from "./client.js";
 import type { Config } from "./config.js";
 import { registerAccountTools } from "./tools/account.js";
 import { createRegistrar } from "./tools/define.js";
-import { registerFieldTools } from "./tools/fields.js";
+import { registerFieldTools, registerFieldWriteTools } from "./tools/fields.js";
 import { registerRecordReadTools, registerRecordWriteTools } from "./tools/records.js";
 import { registerTableTools } from "./tools/tables.js";
 import { registerViewTools } from "./tools/views.js";
@@ -19,6 +19,7 @@ export function createTeableServer(config: Config, client: TeableClient = new Te
   registerWorkspaceTools(registrar);
   registerTableTools(registrar);
   registerFieldTools(registrar);
+  registerFieldWriteTools(registrar);
   registerViewTools(registrar);
   registerRecordReadTools(registrar);
   registerRecordWriteTools(registrar);
