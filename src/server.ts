@@ -14,7 +14,9 @@ import { registerViewTools, registerViewWriteTools } from "./tools/views.js";
 import { registerWorkspaceTools } from "./tools/workspace.js";
 
 export const SERVER_INSTRUCTIONS = `Teable is a no-code database. Data is organized as space (spc...) > base (bse...) > table (tbl...), and a table holds fields (fld...), records (rec...) and views (viw...).
-Find ids by listing from the top down rather than guessing them, and check a table's fields (names and types) before writing records.`;
+Find ids by listing from the top down rather than guessing them: teable_list_bases, then teable_list_tables, then teable_list_fields. Check a table's fields (names, types, select options) before filtering or writing records. Records are keyed by field name.
+For anything the dedicated tools do not cover, use teable_search_api to find an endpoint, then teable_api_get (reads) or teable_api_request (changes) to call it.
+Deleting, converting fields and bulk edits change real team data: confirm with the user first unless they clearly asked for it. Some tools are absent when the server runs in read-only mode.`;
 
 export function createTeableServer(config: Config, client: TeableClient = new TeableClient(config)): McpServer {
   const server = new McpServer({ name: "teable", version: "0.1.0" }, { instructions: SERVER_INSTRUCTIONS });
