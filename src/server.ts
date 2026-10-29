@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { TeableClient } from "./client.js";
 import type { Config } from "./config.js";
 import { registerAccountTools } from "./tools/account.js";
+import { registerCommentTools } from "./tools/comments.js";
 import { createRegistrar } from "./tools/define.js";
 import { registerFieldTools, registerFieldWriteTools } from "./tools/fields.js";
 import { registerRecordReadTools, registerRecordWriteTools } from "./tools/records.js";
@@ -24,5 +25,6 @@ export function createTeableServer(config: Config, client: TeableClient = new Te
   registerViewWriteTools(registrar);
   registerRecordReadTools(registrar);
   registerRecordWriteTools(registrar);
+  registerCommentTools(registrar);
   return server;
 }
