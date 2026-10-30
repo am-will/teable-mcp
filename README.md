@@ -16,7 +16,7 @@ Go to <https://teable.modemobiledaily.com/setting/personal-access-token> and hit
 
 - Name it something like `claude`.
 - Limit it to the bases you want Claude to see.
-- Tick the **read** scopes so Claude can look around, including the one for spaces. Without the space scope everything still works, you just get a warning in the check. Add the **create / update / delete** ones only if you want Claude to edit things, and **comment** if you want it to comment.
+- Tick the **read** scopes so Claude can look around. If the check warns that Teable refused "list spaces", that's fine: everything else works and `teable_list_bases` covers browsing. Add the **create / update / delete** ones only if you want Claude to edit things, and **comment** if you want it to comment.
 - Copy the token when it shows up. Treat it like a password: don't paste it in Slack, don't commit it.
 
 Everyone makes their own token. That way Claude can only do what you can do.
@@ -36,7 +36,7 @@ npm run build
 TEABLE_TOKEN=your-token TEABLE_BASE_URL=https://teable.modemobiledaily.com npm run live-check
 ```
 
-This only reads. It prints counts and names, never what's inside your records. A `401` means the token is wrong. A `403` means it's missing a scope. A `warn` line is fine, it just means one optional scope is missing.
+This only reads. It prints counts and names, never what's inside your records. A `401` means the token is wrong. A `403` means it's missing a scope. A `warn` line is fine, it just means one optional call was refused.
 
 ### 4. Plug it into Claude
 

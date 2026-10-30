@@ -38,7 +38,7 @@ async function call(name, args) {
 }
 
 // `optional` steps are skipped, not failed, when this Teable version lacks the endpoint (404).
-// `scopeOptional` steps only warn when the token lacks the scope for them (403): the rest of the server works without them.
+// `scopeOptional` steps only warn when Teable refuses the token for them (403): the rest of the server works without them.
 async function run(label, fn, { optional = false, scopeOptional = false } = {}) {
   try {
     const note = await fn();
@@ -48,7 +48,7 @@ async function run(label, fn, { optional = false, scopeOptional = false } = {}) 
     if (optional && /Teable API 404|older self-hosted versions lack it/.test(err.message)) return console.log(`skip  ${label}: not available on this Teable version`);
     if (scopeOptional && /Teable API 403/.test(err.message)) {
       warnings++;
-      return console.log(`warn  ${label}: this token has no scope for it. Everything else still works; add the scope to the token in Teable if you want it.`);
+      return console.log(`warn  ${label}: Teable refused this token (a missing scope, or the token's access is limited to certain bases). Everything else still works, and teable_list_bases covers browsing.`);
     }
     failures++;
     console.log(`FAIL  ${label}: ${err.message}`);
@@ -113,6 +113,6 @@ await step("api search", "teable_search_api", { query: "record" }, (v) => `${v.l
 await step("generic GET", "teable_api_get", { path: "/auth/user" });
 
 await client.close();
-const warned = warnings ? ` (${warnings} warning${warnings > 1 ? "s" : ""}: the token is missing an optional scope)` : "";
+const warned = warnings ? ` (${warnings} warning${warnings > 1 ? "s" : ""}: one optional call was refused)` : "";
 console.log(failures ? `\n${failures} check(s) failed.` : `\nAll checks passed${me ? ` as ${me.name ?? me.id}` : ""}${warned}.`);
 process.exit(failures ? 1 : 0);
