@@ -5,6 +5,7 @@ import { createTeableServer } from "./server.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
+  for (const note of config.notes ?? []) console.error(`teable-mcp: ${note}`);
   await createTeableServer(config).connect(new StdioServerTransport());
   // stdout carries the protocol, so all logging goes to stderr.
   console.error(`teable-mcp ready (${config.apiUrl}${config.readOnly ? ", read-only" : ""})`);
