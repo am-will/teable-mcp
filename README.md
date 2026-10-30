@@ -4,7 +4,7 @@ An [MCP](https://modelcontextprotocol.io) server that lets Claude work with your
 
 It runs on your own machine over stdio. Each teammate uses their own Teable token, so Claude sees and changes exactly what that person can.
 
-> **Where it stands:** every tool has been run against our real Teable, on throwaway tables that were deleted afterwards, and it all worked. The read check has also passed with a real personal access token, so token login is proven. Writes were tested with a browser login, so a token without the create/update/delete scopes will get a 403 on edits.
+> **Where it stands:** every tool has been run against our real Teable, on throwaway tables that were deleted afterwards, and it all worked. It has also been checked with a real personal access token. With the 10 scopes below, reading works, updating is allowed, and deleting is refused (Teable answers 403).
 
 ## Get it running
 
@@ -15,11 +15,25 @@ You need Node 20.10 or newer, and access to this repo on GitHub. It takes about 
 Go to <https://teable.modemobiledaily.com/setting/personal-access-token> and hit **Create new token**.
 
 - Name it something like `claude`.
-- Limit it to the bases you want Claude to see.
-- Tick the **read** scopes so Claude can look around. If the check warns that Teable refused "list spaces", that's fine: everything else works and `teable_list_bases` covers browsing. Add the **create / update / delete** ones only if you want Claude to edit things, and **comment** if you want it to comment.
+- Under **Scopes**, tick **only these 10** and leave everything else unticked:
+
+  | Section | Tick |
+  | --- | --- |
+  | Record | Create record, Read record, Update record |
+  | Field | Create field, Read field |
+  | Table | Read table |
+  | View | Read view |
+  | Base | Read base, Read all bases |
+  | Space | Read space |
+
+  That lets Claude read everything, add records, change values (like marking an ad scheduled or sent) and add fields. It **cannot delete anything** (records, fields, tables, views, bases or spaces), change sharing, invite people or run queries.
+- Don't tick any **Delete** scope, **Share view** (it can publish a view to the internet), **Reset table trash** (permanent delete), **Query base**, **Connect to database**, the **Invite** and **Grant role** ones, or **Automation**.
+- Under **Access** you can limit the token to just the base it needs. If you do, the check may warn about "list spaces", which is fine.
 - Copy the token when it shows up. Treat it like a password: don't paste it in Slack, don't commit it.
 
 Everyone makes their own token. That way Claude can only do what you can do.
+
+Need more later? Edit the token and tick extras: **Comment on record** (comments), **Update field** (rename fields), **Create table**, **Create view**, **Update table / view**, **Read record history**. The table under [Tools](#tools) shows which scope unlocks which tool.
 
 ### 2. Install it
 
@@ -85,7 +99,7 @@ Our Teable: https://teable.modemobiledaily.com
 
 1. Check Node is 20.10 or newer. If it isn't, tell me and stop.
 2. Clone the repo somewhere permanent (like ~/code/teable-mcp), then run `npm install` and `npm run build`.
-3. Ask me for my Teable personal access token. I make it at https://teable.modemobiledaily.com/setting/personal-access-token. Never print it back to me, never write it into a file in the repo, and never commit it.
+3. Ask me for my Teable personal access token. I make it at https://teable.modemobiledaily.com/setting/personal-access-token (Create new token). Tell me to tick ONLY these 10 scopes and nothing else: Create record, Read record, Update record, Create field, Read field, Read table, Read view, Read base, Read all bases, Read space. No Delete scopes, no Share view, no Query base. Never print the token back to me, never write it into a file in the repo, and never commit it.
 4. Ask me if I want read-only mode (it adds TEABLE_READ_ONLY=true).
 5. Run `TEABLE_TOKEN=<token> TEABLE_BASE_URL=https://teable.modemobiledaily.com npm run live-check` and show me the result. If it fails, explain it in plain words (401 = bad token, 403 = missing scope) and stop.
 6. Add it to Claude with `claude mcp add teable --scope user -e TEABLE_TOKEN=<token> -e TEABLE_BASE_URL=https://teable.modemobiledaily.com -- node <absolute path to the clone>/dist/index.js` (plus `-e TEABLE_READ_ONLY=true` if I said yes). If I use Claude Desktop instead, add the same thing under mcpServers in claude_desktop_config.json.
@@ -114,6 +128,27 @@ Ask me before doing anything that isn't on this list.
 
 All names are prefixed with `teable_`.
 
+### Which token scope unlocks which tool
+
+| Scope (as Teable's form words it) | Tools |
+| --- | --- |
+| Read record | `list_records`, `get_record`, `count_records`, `list_comments` |
+| Create record | `create_records` |
+| Update record | `update_records`, `attach_file_from_url` |
+| Create field | `create_field` |
+| Read field / Read table / Read view | `list_fields` `get_field` / `list_tables` `get_table` / `list_views` `get_view` |
+| Read base + Read all bases | `list_bases`, `get_base` |
+| Read space | `list_spaces`, `search_space` |
+| *Extra:* Comment on record | `add_comment`, `delete_comment` |
+| *Extra:* Update field | `update_field`, `convert_field` |
+| *Extra:* Create table / Update table | `create_table`, `duplicate_table` / `rename_table`, `set_table_description` |
+| *Extra:* Create view / Update view | `create_view` / `rename_view` |
+| *Extra:* Read record history | `get_record_history` |
+| *Delete scopes* (leave off) | `delete_records`, `delete_fields`, `delete_table`, `delete_view` |
+| *Not available to tokens* | `list_trash`, `restore_trash_item`: Teable refuses tokens here, whatever the scopes. Use the trash in the Teable app. |
+
+`whoami`, `search_api` and the generic API tools need no scope of their own, though `api_get` and `api_request` need whatever the endpoint they call needs.
+
 Records are keyed by **field name**. Filters and sorts accept field names or ids and are resolved for you:
 
 ```json
@@ -138,7 +173,8 @@ Teable has hundreds of endpoints (automations, dashboards, SQL queries, aggregat
 
 ## Known gaps
 
-- **Token scopes.** Reading was checked with a real personal access token. The write tools were run with a browser session, which can do more than a scoped token, so a 403 from a tool usually means the token is missing a scope. `teable_search_api` lists what each endpoint needs.
+- **Token scopes.** Checked live with the 10-scope token from step 1: reads work, `update_records` passes the permission check, and `delete_table` / `delete_records` are refused with a 403. Creating records and fields with that exact token has not been run, though the same tools worked with a browser login. A 403 from a tool usually means a missing scope; `teable_search_api` lists what each endpoint needs.
+- **The trash does not work with tokens.** Teable refuses personal access tokens there even with every scope ticked, so `teable_list_trash` and `teable_restore_trash_item` return an explanation. Use the trash in the Teable app.
 - **Possibly older server version.** Our server lacks at least one newer endpoint (`teable_search_space` returns 404), so others may be missing too. The bundled endpoint index follows the current Teable API, so a result from `teable_search_api` may not exist on our server.
 - Editing a view's filter, sort or grouping has no dedicated tool. Use `teable_api_request` with the shapes below, which were checked live.
 - `search` inside `teable_list_records` is not exposed; use a `contains` filter.
