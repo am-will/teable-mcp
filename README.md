@@ -4,7 +4,7 @@ An [MCP](https://modelcontextprotocol.io) server that lets Claude work with your
 
 It runs on your own machine over stdio. Each teammate uses their own Teable token, so Claude sees and changes exactly what that person can.
 
-> **Where it stands:** every tool has been run against our real Teable, on throwaway tables that were deleted afterwards, and it all worked. The one thing not tried yet is a personal access token (the testing used a browser login), so the check in step 3 matters the first time.
+> **Where it stands:** every tool has been run against our real Teable, on throwaway tables that were deleted afterwards, and it all worked. The read check has also passed with a real personal access token, so token login is proven. Writes were tested with a browser login, so a token without the create/update/delete scopes will get a 403 on edits.
 
 ## Get it running
 
@@ -16,7 +16,7 @@ Go to <https://teable.modemobiledaily.com/setting/personal-access-token> and hit
 
 - Name it something like `claude`.
 - Limit it to the bases you want Claude to see.
-- Tick the **read** scopes so Claude can look around. Add the **create / update / delete** ones only if you want Claude to edit things, and **comment** if you want it to comment.
+- Tick the **read** scopes so Claude can look around, including the one for spaces. Without the space scope everything still works, you just get a warning in the check. Add the **create / update / delete** ones only if you want Claude to edit things, and **comment** if you want it to comment.
 - Copy the token when it shows up. Treat it like a password: don't paste it in Slack, don't commit it.
 
 Everyone makes their own token. That way Claude can only do what you can do.
@@ -36,7 +36,7 @@ npm run build
 TEABLE_TOKEN=your-token TEABLE_BASE_URL=https://teable.modemobiledaily.com npm run live-check
 ```
 
-This only reads. It prints counts and names, never what's inside your records. A `401` means the token is wrong. A `403` means it's missing a scope.
+This only reads. It prints counts and names, never what's inside your records. A `401` means the token is wrong. A `403` means it's missing a scope. A `warn` line is fine, it just means one optional scope is missing.
 
 ### 4. Plug it into Claude
 
@@ -138,7 +138,7 @@ Teable has hundreds of endpoints (automations, dashboards, SQL queries, aggregat
 
 ## Known gaps
 
-- **Token auth is untested here.** Everything was exercised live with a browser session cookie, which hits the same endpoints, but a personal access token has its own scopes. A 403 from a tool usually means a missing scope; `teable_search_api` lists what each endpoint needs.
+- **Token scopes.** Reading was checked with a real personal access token. The write tools were run with a browser session, which can do more than a scoped token, so a 403 from a tool usually means the token is missing a scope. `teable_search_api` lists what each endpoint needs.
 - **Possibly older server version.** Our server lacks at least one newer endpoint (`teable_search_space` returns 404), so others may be missing too. The bundled endpoint index follows the current Teable API, so a result from `teable_search_api` may not exist on our server.
 - Editing a view's filter, sort or grouping has no dedicated tool. Use `teable_api_request` with the shapes below, which were checked live.
 - `search` inside `teable_list_records` is not exposed; use a `contains` filter.
