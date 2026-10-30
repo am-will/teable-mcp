@@ -28,6 +28,7 @@ const client = new Client({ name: "live-check", version: "0.0.0" });
 await client.connect(transport);
 
 let failures = 0;
+let warnings = 0;
 
 async function call(name, args) {
   const res = await client.callTool({ name, arguments: args });
@@ -37,12 +38,18 @@ async function call(name, args) {
 }
 
 // `optional` steps are skipped, not failed, when this Teable version lacks the endpoint (404).
-async function run(label, fn, { optional = false } = {}) {
+// `scopeOptional` steps only warn when the token lacks the scope for them (403): the rest of the server works without them.
+async function run(label, fn, { optional = false, scopeOptional = false } = {}) {
   try {
     const note = await fn();
     console.log(`ok    ${label}${note ? `  (${note})` : ""}`);
   } catch (err) {
-    if (optional && /Teable API 404/.test(err.message)) return console.log(`skip  ${label}: not available on this Teable version`);
+    // The tools rewrite a 404 from space search into a friendlier message, so match both.
+    if (optional && /Teable API 404|older self-hosted versions lack it/.test(err.message)) return console.log(`skip  ${label}: not available on this Teable version`);
+    if (scopeOptional && /Teable API 403/.test(err.message)) {
+      warnings++;
+      return console.log(`warn  ${label}: this token has no scope for it. Everything else still works; add the scope to the token in Teable if you want it.`);
+    }
     failures++;
     console.log(`FAIL  ${label}: ${err.message}`);
   }
@@ -62,7 +69,7 @@ async function step(label, name, args, check, opts) {
 }
 
 const me = await step("whoami", "teable_whoami", {}, (v) => v.name ?? v.id);
-const spaces = await step("list spaces", "teable_list_spaces", {}, (v) => `${v.length} spaces`);
+const spaces = await step("list spaces", "teable_list_spaces", {}, (v) => `${v.length} spaces`, { scopeOptional: true });
 const bases = await step("list bases", "teable_list_bases", {}, (v) => `${v.length} bases`);
 const base = bases?.[0];
 const tables = base && (await step("list tables", "teable_list_tables", { baseId: base.id }, (v) => `${v.length} tables in "${base.name}"`));
@@ -100,11 +107,12 @@ if (table && field) {
   await step("sort", "teable_list_records", { tableId: table.id, take: 2, orderBy: [{ field: field.name, order: "asc" }] }, (v) => `${v.returned} returned`);
 }
 if (spaces?.[0]) {
-  await step("search space", "teable_search_space", { spaceId: spaces[0].id, search: table?.name ?? "a" }, undefined, { optional: true });
+  await step("search space", "teable_search_space", { spaceId: spaces[0].id, search: table?.name ?? "a" }, undefined, { optional: true, scopeOptional: true });
 }
 await step("api search", "teable_search_api", { query: "record" }, (v) => `${v.length} endpoints`);
 await step("generic GET", "teable_api_get", { path: "/auth/user" });
 
 await client.close();
-console.log(failures ? `\n${failures} check(s) failed.` : `\nAll checks passed${me ? ` as ${me.name ?? me.id}` : ""}.`);
+const warned = warnings ? ` (${warnings} warning${warnings > 1 ? "s" : ""}: the token is missing an optional scope)` : "";
+console.log(failures ? `\n${failures} check(s) failed.` : `\nAll checks passed${me ? ` as ${me.name ?? me.id}` : ""}${warned}.`);
 process.exit(failures ? 1 : 0);
