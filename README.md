@@ -33,7 +33,7 @@ Go to <https://teable.modemobiledaily.com/setting/personal-access-token> and hit
 
 Everyone makes their own token. That way Claude can only do what you can do.
 
-Need more later? Edit the token and tick extras: **Comment on record** (comments), **Update field** (rename fields), **Create table**, **Create view**, **Update table / view**, **Read record history**. The table under [Tools](#tools) shows which scope unlocks which tool.
+Need more later? Edit the token and tick extras: **Comment on record** (comments), **Update field** (rename fields), **Create table**, **Create view**, **Update table / view**. The table under [Tools](#tools) shows which scope unlocks which tool.
 
 ### 2. Install it
 
@@ -134,7 +134,7 @@ All names are prefixed with `teable_`.
 | --- | --- |
 | Read record | `list_records`, `get_record`, `count_records`, `list_comments` |
 | Create record | `create_records` |
-| Update record | `update_records`, `attach_file_from_url` |
+| Update record | `update_records`, `attach_file_from_url`, `get_record_history` |
 | Create field | `create_field` |
 | Read field / Read table / Read view | `list_fields` `get_field` / `list_tables` `get_table` / `list_views` `get_view` |
 | Read base + Read all bases | `list_bases`, `get_base` |
@@ -143,7 +143,6 @@ All names are prefixed with `teable_`.
 | *Extra:* Update field | `update_field`, `convert_field` |
 | *Extra:* Create table / Update table | `create_table`, `duplicate_table` / `rename_table`, `set_table_description` |
 | *Extra:* Create view / Update view | `create_view` / `rename_view` |
-| *Extra:* Read record history | `get_record_history` |
 | *Delete scopes* (leave off) | `delete_records`, `delete_fields`, `delete_table`, `delete_view` |
 | *Not available to tokens* | `list_trash`, `restore_trash_item`: Teable refuses tokens here, whatever the scopes. Use the trash in the Teable app. |
 
