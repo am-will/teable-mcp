@@ -53,6 +53,10 @@ Setup opens <https://teable.modemobiledaily.com/setting/personal-access-token> f
 | Base | Read base, Read all bases |
 | Space | Read space |
 
+![The Teable token page with only the 10 scopes ticked and every Delete box empty](docs/token-scopes.png)
+
+*This is how the Scopes should look: only the 10 ticked boxes above, and every Delete box empty. Leave everything further down the page unticked too. The name and description can be anything.*
+
 That lets Claude read everything, add records, change values (like marking an ad scheduled or sent) and add fields. It **cannot delete anything** (records, fields, tables, views, bases or spaces), change sharing, invite people or run queries. Then scroll down, click **Submit**, and copy the token Teable shows you.
 
 - Don't tick any **Delete** scope, **Share view** (it can publish a view to the internet), **Reset table trash** (permanent delete), **Query base**, **Connect to database**, the **Invite** and **Grant role** ones, or **Automation**.
