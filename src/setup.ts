@@ -13,14 +13,17 @@ export function serverEntry(nodePath: string, entryPath: string, token: string, 
   return { command: nodePath, args: [entryPath], env: { TEABLE_TOKEN: token, TEABLE_BASE_URL: baseUrl } };
 }
 
-/** Everything after `claude` in `claude mcp add`, registering the server for the current user in Claude Code. */
-export function claudeAddArgs(entry: McpEntry): string[] {
+/**
+ * Everything after `claude` in `claude mcp add`. Scope "local" (the default for setup) makes the server available only in
+ * the folder `claude` is run from, private to this user; "user" makes it available in every project.
+ */
+export function claudeAddArgs(entry: McpEntry, scope: "local" | "user" = "user"): string[] {
   return [
     "mcp",
     "add",
     "teable",
     "--scope",
-    "user",
+    scope,
     ...Object.entries(entry.env).flatMap(([key, value]) => ["-e", `${key}=${value}`]),
     "--",
     entry.command,
@@ -92,6 +95,33 @@ export function interpretDeleteProbe(status: number | undefined): DeleteProbe {
   if (status === 401) return "invalid-token";
   if (status === undefined || status === 429 || status >= 500) return "unknown";
   return "allowed";
+}
+
+/**
+ * Turns what someone typed or dragged into the terminal into folder paths: comma separated, with quotes, a trailing
+ * space or backslash-escaped spaces (what dragging a folder in produces on a Mac) and a leading ~ all tidied up.
+ */
+export function parseFolderList(answer: string, home: string): string[] {
+  return answer
+    .split(",")
+    .map((part) => part.trim().replace(/^(["'])(.*)\1$/, "$2").replace(/\\ /g, " ").trim())
+    .filter((part) => part !== "")
+    .map((part) => (part === "~" ? home : /^~[\\/]/.test(part) ? `${home}${part.slice(1)}` : part));
+}
+
+export type InstallChoice = "code" | "desktop" | "both" | "none";
+
+/**
+ * Reads the answer to "where should Teable be added?". People type a number, a word, or just press Enter, and a plain
+ * "no" means they changed their mind, so all of those are understood. Anything else is undefined (ask again).
+ */
+export function parseInstallChoice(answer: string): InstallChoice | undefined {
+  const text = answer.trim().toLowerCase().replace(/[.!\s]+$/, "");
+  if (["", "3", "both", "all", "yes", "y"].includes(text)) return "both";
+  if (["1", "code", "claude code", "cli", "terminal"].includes(text)) return "code";
+  if (["2", "desktop", "app", "claude desktop", "desktop app", "the claude desktop app"].includes(text)) return "desktop";
+  if (["n", "no", "none", "nothing", "cancel", "quit", "exit", "q", "skip"].includes(text)) return "none";
+  return undefined;
 }
 
 /** The program and arguments that open a web page in the user's default browser. */

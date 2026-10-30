@@ -6,6 +6,8 @@ import {
   desktopConfigPath,
   interpretDeleteProbe,
   mergeDesktopConfig,
+  parseFolderList,
+  parseInstallChoice,
   quoteForCmd,
   serverEntry,
 } from "../src/setup.js";
@@ -20,6 +22,26 @@ describe("setup helpers", () => {
       "-e", "TEABLE_BASE_URL=https://teable.example.com",
       "--", "/usr/bin/node", "/apps/teable-mcp/dist/index.js",
     ]);
+  });
+
+  it("can register for one folder only (local scope) instead of every project", () => {
+    expect(claudeAddArgs(entry, "local").slice(0, 5)).toEqual(["mcp", "add", "teable", "--scope", "local"]);
+    expect(claudeAddArgs(entry).slice(3, 5)).toEqual(["--scope", "user"]);
+  });
+
+  describe("parseFolderList", () => {
+    it("splits on commas and tidies each path", () => {
+      expect(parseFolderList("/a/ads, /b/news ", "/Users/pat")).toEqual(["/a/ads", "/b/news"]);
+      expect(parseFolderList("", "/Users/pat")).toEqual([]);
+      expect(parseFolderList(" , ,", "/Users/pat")).toEqual([]);
+    });
+
+    it("understands a dragged-in folder, quotes and ~", () => {
+      expect(parseFolderList("/Users/pat/My\\ Ads\\ Folder ", "/Users/pat")).toEqual(["/Users/pat/My Ads Folder"]);
+      expect(parseFolderList('"C:\\Users\\Pat\\Ads Folder"', "C:\\Users\\Pat")).toEqual(["C:\\Users\\Pat\\Ads Folder"]);
+      expect(parseFolderList("'/x/y'", "/h")).toEqual(["/x/y"]);
+      expect(parseFolderList("~/Applications/ads, ~", "/Users/pat")).toEqual(["/Users/pat/Applications/ads", "/Users/pat"]);
+    });
   });
 
   describe("quoteForCmd", () => {
@@ -100,6 +122,28 @@ describe("setup helpers", () => {
       [undefined, "unknown"],
     ])("status %s means %s", (status, expected) => {
       expect(interpretDeleteProbe(status)).toBe(expected);
+    });
+  });
+
+  describe("parseInstallChoice", () => {
+    it.each([
+      ["", "both"],
+      ["  ", "both"],
+      ["3", "both"],
+      ["Both", "both"],
+      ["yes", "both"],
+      ["1", "code"],
+      ["Claude Code", "code"],
+      ["2", "desktop"],
+      ["the Claude desktop app.", "desktop"],
+      ["no", "none"],
+      ["No!", "none"],
+      ["cancel", "none"],
+      ["banana", undefined],
+      ["4", undefined],
+      ["1 and 2", undefined],
+    ])("%j means %s", (answer, expected) => {
+      expect(parseInstallChoice(answer)).toBe(expected);
     });
   });
 

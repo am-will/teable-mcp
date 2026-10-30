@@ -4,13 +4,15 @@
 //
 //   npm run setup
 //
-// Options: --desktop-config <path>   use this Claude Desktop config file instead of the default location
+// Options: --project <folder>        add Teable to Claude Code in this folder only (repeat for more; setup asks if none given)
+//          --global                  add Teable to Claude Code for every project instead of chosen folders
+//          --desktop-config <path>   use this Claude Desktop config file instead of the default location
 //          --allow-delete            accept a token that is allowed to delete (setup refuses these by default)
 // Env:     TEABLE_BASE_URL           Teable address (default below)
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { cleanToken } from "../dist/config.js";
@@ -21,6 +23,8 @@ import {
   desktopConfigPath,
   interpretDeleteProbe,
   mergeDesktopConfig,
+  parseFolderList,
+  parseInstallChoice,
   quoteForCmd,
   serverEntry,
 } from "../dist/setup.js";
@@ -31,6 +35,9 @@ const baseUrl = (process.env.TEABLE_BASE_URL || "https://teable.modemobiledaily.
 const desktopFlag = process.argv.indexOf("--desktop-config");
 const desktopOverride = desktopFlag > 0 ? process.argv[desktopFlag + 1] : undefined;
 const allowDelete = process.argv.includes("--allow-delete");
+const useGlobal = process.argv.includes("--global");
+const projectArgs = process.argv.flatMap((arg, i, all) => (arg === "--project" && all[i + 1] ? [all[i + 1]] : []));
+const claudeFolders = [];
 
 function fail(message) {
   console.error(`\n${message}`);
@@ -106,10 +113,10 @@ function createPrompter() {
   return { ask, secret };
 }
 
-function runClaude(args, stdio) {
+function runClaude(args, stdio, cwd) {
   // On Windows `claude` may be a .cmd shim, which only cmd.exe can start, so go through it with quoted arguments.
-  if (process.platform === "win32") return spawnSync(["claude", ...args].map(quoteForCmd).join(" "), { shell: true, stdio });
-  return spawnSync("claude", args, { stdio });
+  if (process.platform === "win32") return spawnSync(["claude", ...args].map(quoteForCmd).join(" "), { shell: true, stdio, cwd });
+  return spawnSync("claude", args, { stdio, cwd });
 }
 
 function showTokenChecklist() {
@@ -158,20 +165,51 @@ async function findDeletePermissions(token) {
   return allowed;
 }
 
-function addToClaudeCode(entry) {
+/** The existing folders Claude Code should get Teable in: from --project, or typed (or dragged in) at a prompt. */
+async function chooseClaudeFolders(prompt) {
+  let wanted = projectArgs;
+  if (wanted.length === 0) {
+    console.log("\nTeable will work in Claude Code only in the folders you choose now, not in every project.");
+    wanted = parseFolderList(await prompt.ask("Paste or drag in the folder(s), separated by commas: "), homedir());
+  }
+  const folders = [];
+  for (const raw of wanted) {
+    const folder = resolve(raw);
+    if (existsSync(folder) && statSync(folder).isDirectory()) folders.push(folder);
+    else console.log(`Skipped ${folder}: that folder does not exist.`);
+  }
+  return folders;
+}
+
+async function addToClaudeCode(entry, prompt) {
   const probe = runClaude(["--version"], "ignore");
   if (probe.error || probe.status !== 0) {
     console.log("\nClaude Code (the `claude` command) was not found on this computer, so I skipped it. If you use the Claude desktop app's chat, choose 2 instead.");
     return false;
   }
-  runClaude(["mcp", "remove", "teable", "--scope", "user"], "ignore");
-  console.log("\nAdding Teable to Claude Code...");
-  const result = runClaude(claudeAddArgs(entry), "inherit");
-  if (result.status !== 0) {
-    console.log("Claude Code did not accept it (see the message above).");
+  const removeEverywhere = () => runClaude(["mcp", "remove", "teable", "--scope", "user"], "ignore").status === 0;
+
+  if (useGlobal) {
+    removeEverywhere();
+    console.log("\nAdding Teable to Claude Code for every project...");
+    const result = runClaude(claudeAddArgs(entry, "user"), "inherit");
+    if (result.status !== 0) console.log("Claude Code did not accept it (see the message above).");
+    return result.status === 0;
+  }
+
+  const folders = await chooseClaudeFolders(prompt);
+  if (folders.length === 0) {
+    console.log("\nNo folder chosen, so Claude Code was skipped. To add Teable to every project instead, run: npm run setup -- --global");
     return false;
   }
-  return true;
+  if (removeEverywhere()) console.log("\nRemoved the older Teable entry that applied to every project.");
+  for (const folder of folders) {
+    runClaude(["mcp", "remove", "teable", "--scope", "local"], "ignore", folder);
+    console.log(`\nAdding Teable to Claude Code in ${folder}...`);
+    if (runClaude(claudeAddArgs(entry, "local"), "inherit", folder).status === 0) claudeFolders.push(folder);
+    else console.log("Claude Code did not accept it (see the message above).");
+  }
+  return claudeFolders.length > 0;
 }
 
 async function addToClaudeDesktop(entry, prompt) {
@@ -193,6 +231,17 @@ async function addToClaudeDesktop(entry, prompt) {
   writeFileSync(file, merged);
   console.log("Added to Claude Desktop.");
   return true;
+}
+
+/** Asks where to add Teable. An unclear answer is asked again (twice at most), so a typo does not waste the token. */
+async function askInstallChoice(prompt) {
+  let question = "\nAdd Teable to: (1) Claude Code  (2) the Claude desktop app  (3) both. Press Enter for both: ";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const choice = parseInstallChoice(await prompt.ask(question));
+    if (choice) return choice;
+    question = "Sorry, I did not get that. Type 1, 2 or 3, or press Enter for both: ";
+  }
+  fail("Could not tell which one you meant, so nothing was added. Run setup again; keep the same token copied and paste it again.");
 }
 
 async function main() {
@@ -231,8 +280,11 @@ async function main() {
     console.log("Good: it cannot delete tables, records, fields or views.");
   }
 
-  const choice = await prompt.ask("\nAdd Teable to: (1) Claude Code  (2) the Claude desktop app  (3) both. If you are not sure, type 3: ");
-  if (!["1", "2", "3"].includes(choice)) fail("Please run setup again and answer 1, 2 or 3. Nothing was added.");
+  const choice = await askInstallChoice(prompt);
+  if (choice === "none") {
+    console.log("\nOkay, nothing was added to Claude. Your token was not saved anywhere, so paste it again the next time you run setup.");
+    return;
+  }
 
   const entry = serverEntry(process.execPath, entryPath, token, baseUrl);
   const added = [];
@@ -243,12 +295,13 @@ async function main() {
       console.log(`\nCould not add it to ${name}: ${err instanceof Error ? err.message : err}`);
     }
   };
-  if (choice === "1" || choice === "3") await attempt("Claude Code", () => addToClaudeCode(entry));
-  if (choice === "2" || choice === "3") await attempt("Claude Desktop", () => addToClaudeDesktop(entry, prompt));
+  if (choice === "code" || choice === "both") await attempt("Claude Code", () => addToClaudeCode(entry, prompt));
+  if (choice === "desktop" || choice === "both") await attempt("Claude Desktop", () => addToClaudeDesktop(entry, prompt));
 
   if (added.length === 0) fail("Nothing was added to Claude.");
   console.log(`\nDone: added to ${added.join(" and ")}.`);
-  console.log("Start a new Claude Code session (or quit and reopen Claude Desktop), then ask: list my Teable bases");
+  if (claudeFolders.length > 0) console.log(`Claude Code can use Teable only when you start it in:\n${claudeFolders.map((f) => `  ${f}`).join("\n")}`);
+  console.log("Start a new Claude Code session there (or quit and reopen Claude Desktop), then ask: list my Teable bases");
 }
 
 main().catch((err) => fail(err instanceof Error ? err.message : String(err)));
