@@ -87,6 +87,13 @@ git pull && npm install && npm run build
 
 Then restart Claude.
 
+### If something goes wrong
+
+- **"unexpected characters" or "invalid header value":** a hidden character came along when the token was copied (a zero-width space, smart quotes, a line break). The server now strips those and prints `removed N hidden characters` when it does, so update to the latest version with `git pull && npm install && npm run build`, restart Claude, and try again. If it still fails, copy the token again straight from Teable.
+- **`401`:** the token is wrong or has been regenerated.
+- **`403`:** the token is missing a scope. For a delete, that's on purpose: this token isn't allowed to delete.
+- **A trash error:** Teable doesn't let tokens use the trash. Use the trash in the Teable app.
+
 ## Give this to your agent
 
 Don't want to do the steps yourself? Paste this into Claude Code (or any coding agent) and let it do them:
