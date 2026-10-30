@@ -8,59 +8,79 @@ It runs on your own machine over stdio. Each teammate uses their own Teable toke
 
 ## Get it running
 
-You need Node 20.10 or newer, and access to this repo on GitHub. It takes about five minutes.
+Setup is one command that works on Windows, Mac and Linux. No bash, no WSL. The only thing you need installed first is Node.js, which comes with npm.
 
-### 1. Make a token in Teable
+> Setup has been run on a Mac. The Windows parts are covered by tests but haven't been tried on a real Windows PC yet, so tell us if anything is off.
 
-Go to <https://teable.modemobiledaily.com/setting/personal-access-token> and hit **Create new token**.
+### The easy way: ask Claude
 
-- Name it something like `claude`.
-- Under **Scopes**, tick **only these 10** and leave everything else unticked:
+If you have Claude Code (or the Code tab in the Claude desktop app), paste the prompt from [Give this to your agent](#give-this-to-your-agent). Claude installs what's missing, Node.js included, and runs the setup. The one thing you do yourself is type your token at a hidden prompt, so Claude never sees it.
 
-  | Section | Tick |
-  | --- | --- |
-  | Record | Create record, Read record, Update record |
-  | Field | Create field, Read field |
-  | Table | Read table |
-  | View | Read view |
-  | Base | Read base, Read all bases |
-  | Space | Read space |
+### By hand (about 5 minutes)
 
-  That lets Claude read everything, add records, change values (like marking an ad scheduled or sent) and add fields. It **cannot delete anything** (records, fields, tables, views, bases or spaces), change sharing, invite people or run queries.
+1. **Install Node.js** (once, skip if you have it). Download the **LTS** version from <https://nodejs.org> and click through the installer. It includes npm. You need version 20.10 or newer (`node -v` shows it). Shortcuts: `winget install OpenJS.NodeJS.LTS` on Windows, `brew install node` on a Mac. Open a fresh terminal afterwards so it's found.
+2. **Get the code.** Easiest: go to <https://github.com/am-will/teable-mcp>, click **Code**, then **Download ZIP**, and unzip it somewhere you'll keep it, like Documents. You don't need git. (If you have it, `git clone https://github.com/am-will/teable-mcp.git` works too.)
+3. **Open a terminal in that folder.** Windows 11: open the folder, right-click empty space, **Open in Terminal** (Windows 10: hold Shift, right-click, **Open PowerShell window here**). Mac: right-click the folder, **New Terminal at Folder**.
+4. **Run these two commands:**
+
+   ```bash
+   npm install
+   npm run setup
+   ```
+
+5. **Follow the prompts.** Setup:
+   - opens the Teable page where you make your token, and shows the 10 boxes to tick (see below)
+   - asks you to paste the token, hidden as you paste
+   - checks the token works, and **refuses it if it's allowed to delete anything**
+   - adds Teable to Claude: `1` for Claude Code, `2` for the Claude desktop app, `3` for both. Not sure? Pick `3`.
+6. **Restart Claude** (or open a new Claude Code session) and ask it "list my Teable bases".
+
+### The token
+
+Setup opens <https://teable.modemobiledaily.com/setting/personal-access-token> for you. Click **Create new token**, name it something like `claude`, and under **Scopes** tick **only these 10** (there's a **Select all** button, so don't use it):
+
+| Section | Tick |
+| --- | --- |
+| Record | Create record, Read record, Update record |
+| Field | Create field, Read field |
+| Table | Read table |
+| View | Read view |
+| Base | Read base, Read all bases |
+| Space | Read space |
+
+That lets Claude read everything, add records, change values (like marking an ad scheduled or sent) and add fields. It **cannot delete anything** (records, fields, tables, views, bases or spaces), change sharing, invite people or run queries. Then scroll down, click **Submit**, and copy the token Teable shows you.
+
 - Don't tick any **Delete** scope, **Share view** (it can publish a view to the internet), **Reset table trash** (permanent delete), **Query base**, **Connect to database**, the **Invite** and **Grant role** ones, or **Automation**.
 - Under **Access** you can limit the token to just the base it needs. If you do, the check may warn about "list spaces", which is fine.
-- Copy the token when it shows up. Treat it like a password: don't paste it in Slack, don't commit it.
+- Treat the token like a password: don't paste it in Slack, don't commit it. Everyone makes their own, so Claude can only do what you can do.
 
-Everyone makes their own token. That way Claude can only do what you can do.
+Need more later? Edit the token and tick extras: **Comment on record** (comments), **Update field** (rename fields), **Create table**, **Create view**, **Update table / view**. The table under [Tools](#tools) shows which scope unlocks which tool. To allow deleting, tick the Delete boxes and run `npm run setup -- --allow-delete`.
 
-Need more later? Edit the token and tick extras: **Comment on record** (comments), **Update field** (rename fields), **Create table**, **Create view**, **Update table / view**. The table under [Tools](#tools) shows which scope unlocks which tool.
+### Updating later
 
-### 2. Install it
+If you used git: `git pull`, then `npm install` and `npm run build`, then restart Claude. If you used the ZIP: download it again, unzip it, and run `npm install` and `npm run setup` in the new folder.
 
-```bash
-git clone https://github.com/am-will/teable-mcp.git
-cd teable-mcp
-npm install
-npm run build
-```
+### Without the setup script
 
-### 3. Check the token works
+Only if you'd rather do it by hand. Build it with `npm install` and `npm run build`, then check the token. On Mac or Linux:
 
 ```bash
 TEABLE_TOKEN=your-token TEABLE_BASE_URL=https://teable.modemobiledaily.com npm run live-check
 ```
 
-This only reads. It prints counts and names, never what's inside your records. A `401` means the token is wrong. A `403` means it's missing a scope. A `warn` line is fine, it just means one optional call was refused.
+In Windows PowerShell:
 
-### 4. Plug it into Claude
+```powershell
+$env:TEABLE_TOKEN="your-token"; $env:TEABLE_BASE_URL="https://teable.modemobiledaily.com"; npm run live-check
+```
 
-**Claude Code**
+**Claude Code** (same command everywhere; use the full path to `dist/index.js`):
 
 ```bash
 claude mcp add teable --scope user -e TEABLE_TOKEN=your-token -e TEABLE_BASE_URL=https://teable.modemobiledaily.com -- node /absolute/path/to/teable-mcp/dist/index.js
 ```
 
-**Claude Desktop** (`claude_desktop_config.json`)
+**Claude desktop app** (in the app: Settings, Developer, Edit Config. Mac: `~/Library/Application Support/Claude/claude_desktop_config.json`. Windows: `%APPDATA%\Claude\claude_desktop_config.json`). On Windows write the path with double backslashes, like `C:\\Users\\you\\teable-mcp\\dist\\index.js`:
 
 ```json
 {
@@ -77,42 +97,36 @@ claude mcp add teable --scope user -e TEABLE_TOKEN=your-token -e TEABLE_BASE_URL
 }
 ```
 
-Restart Claude, then ask it "list my Teable bases". If you only want Claude to look, add `TEABLE_READ_ONLY=true` next to the other two settings. Then it can't change anything, even if you ask.
-
-### Updating later
-
-```bash
-git pull && npm install && npm run build
-```
-
-Then restart Claude.
+If you only want Claude to look, add `TEABLE_READ_ONLY=true` next to the other two settings. Then it can't change anything, even if you ask.
 
 ### If something goes wrong
 
-- **"unexpected characters" or "invalid header value":** a hidden character came along when the token was copied (a zero-width space, smart quotes, a line break). The server now strips those and prints `removed N hidden characters` when it does, so update to the latest version with `git pull && npm install && npm run build`, restart Claude, and try again. If it still fails, copy the token again straight from Teable.
+- **`node` or `npm` is "not recognized" / "command not found":** Node.js isn't installed yet, or the terminal was open before you installed it. Install it (step 1) and open a new terminal.
+- **"unexpected characters" or "invalid header value":** a hidden character came along when the token was copied (a zero-width space, smart quotes, a line break). The server and setup now strip those and say `removed N hidden characters`, so update to the latest version and try again. If it still fails, copy the token again straight from Teable.
+- **Setup says the token can delete:** open it in Teable (Settings, Personal access tokens), untick every box that says Delete, save, and run setup again. Or make a new token with only the 10 boxes.
+- **Setup says it can't find `claude`:** you don't have Claude Code. Choose `2` to add it to the Claude desktop app instead.
 - **`401`:** the token is wrong or has been regenerated.
 - **`403`:** the token is missing a scope. For a delete, that's on purpose: this token isn't allowed to delete.
 - **A trash error:** Teable doesn't let tokens use the trash. Use the trash in the Teable app.
 
 ## Give this to your agent
 
-Don't want to do the steps yourself? Paste this into Claude Code (or any coding agent) and let it do them:
+Paste this into Claude Code (or the Code tab in the Claude desktop app) and let it do the work. It installs what's missing and runs setup. You type your token yourself, so the agent never sees it.
 
 ```text
-Set up the Teable MCP server for me so Claude can use our Teable.
+Set up the Teable MCP server for me so Claude can use our Teable. I'm not technical, so explain things in plain words and do the work for me.
 
-Repo: https://github.com/am-will/teable-mcp (it's private, so use my GitHub login, e.g. `gh repo clone am-will/teable-mcp`)
+Repo: https://github.com/am-will/teable-mcp (public)
 Our Teable: https://teable.modemobiledaily.com
+I might be on Windows without WSL, so use PowerShell-friendly commands and nothing bash-only.
 
-1. Check Node is 20.10 or newer. If it isn't, tell me and stop.
-2. Clone the repo somewhere permanent (like ~/code/teable-mcp), then run `npm install` and `npm run build`.
-3. Ask me for my Teable personal access token. I make it at https://teable.modemobiledaily.com/setting/personal-access-token (Create new token). Tell me to tick ONLY these 10 scopes and nothing else: Create record, Read record, Update record, Create field, Read field, Read table, Read view, Read base, Read all bases, Read space. No Delete scopes, no Share view, no Query base. Never print the token back to me, never write it into a file in the repo, and never commit it.
-4. Ask me if I want read-only mode (it adds TEABLE_READ_ONLY=true).
-5. Run `TEABLE_TOKEN=<token> TEABLE_BASE_URL=https://teable.modemobiledaily.com npm run live-check` and show me the result. If it fails, explain it in plain words (401 = bad token, 403 = missing scope) and stop.
-6. Add it to Claude with `claude mcp add teable --scope user -e TEABLE_TOKEN=<token> -e TEABLE_BASE_URL=https://teable.modemobiledaily.com -- node <absolute path to the clone>/dist/index.js` (plus `-e TEABLE_READ_ONLY=true` if I said yes). If I use Claude Desktop instead, add the same thing under mcpServers in claude_desktop_config.json.
-7. Tell me to restart Claude, then to ask it "list my Teable bases" to test it.
+1. Check that Node.js 20.10 or newer and npm are installed (`node -v` and `npm -v`). If they are missing or too old, tell me, and with my OK install the current LTS version (Windows: `winget install OpenJS.NodeJS.LTS`; Mac: `brew install node`, or the installer from https://nodejs.org). Then use a NEW terminal so it is found.
+2. Download the repo somewhere permanent, like my Documents folder. Use `git clone https://github.com/am-will/teable-mcp.git` if git is installed. Otherwise download and unzip https://github.com/am-will/teable-mcp/archive/refs/heads/main.zip.
+3. In that folder, run `npm install`.
+4. Give me a terminal I can type into (use a terminal panel if you have one; if you can't, tell me exactly how to open one in that folder) and have me run `npm run setup` there. It opens the Teable token page, shows me which 10 boxes to tick (no Delete scopes), and asks me to paste my token at a hidden prompt. Do NOT ask me for the token, do not type it for me, and never write it into a file or a message. Wait until I tell you it has finished. It checks the token, refuses one that can delete, and adds Teable to Claude.
+5. When it says "Done", tell me to restart Claude (or open a new Claude Code session) and ask "list my Teable bases" to test it. If it printed an error, explain it in plain words (401 = wrong token, 403 = missing scope) and help me fix it.
 
-Ask me before doing anything that isn't on this list.
+Ask me before installing anything.
 ```
 
 ## Configuration
@@ -212,4 +226,4 @@ npm run typecheck
 npm run build:index # regenerate src/generated/endpoints.json from Teable's swagger.json
 ```
 
-Layout: `src/client.ts` (HTTP, retries, errors), `src/config.ts`, `src/server.ts` (wiring and instructions), `src/tools/*` (one file per area; `define.ts` is the registrar that applies annotations and read-only mode, `api-policy.ts` guards the generic tools), `test/helpers.ts` (runs the real server against a fake Teable).
+Layout: `src/client.ts` (HTTP, retries, errors), `src/config.ts`, `src/setup.ts` and `scripts/setup.mjs` (the guided install), `src/server.ts` (wiring and instructions), `src/tools/*` (one file per area; `define.ts` is the registrar that applies annotations and read-only mode, `api-policy.ts` guards the generic tools), `test/helpers.ts` (runs the real server against a fake Teable).
