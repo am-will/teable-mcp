@@ -18,7 +18,7 @@ If you have Claude Code (or the Code tab in the Claude desktop app), paste the p
 
 ### By hand (about 5 minutes)
 
-1. **Install Node.js** (once, skip if you have it). Download the **LTS** version from <https://nodejs.org> and click through the installer. It includes npm. You need version 20.10 or newer (`node -v` shows it). Shortcuts: `winget install OpenJS.NodeJS.LTS` on Windows, `brew install node` on a Mac. Open a fresh terminal afterwards so it's found.
+1. **Install Node.js** (once, skip if you have it). Download the **LTS** version from <https://nodejs.org> and click through the installer. It includes npm. (The Claude desktop app has its own hidden copy of Node, but your terminal can't use it, so install Node anyway.) You need version 20.10 or newer (`node -v` shows it). Shortcuts: `winget install OpenJS.NodeJS.LTS` on Windows, `brew install node` on a Mac. Open a fresh terminal afterwards so it's found.
 2. **Get the code.** Easiest: go to <https://github.com/am-will/teable-mcp>, click **Code**, then **Download ZIP**, and unzip it somewhere you'll keep it, like Documents. You don't need git. (If you have it, `git clone https://github.com/am-will/teable-mcp.git` works too.)
 3. **Open a terminal in that folder.** Windows 11: open the folder, right-click empty space, **Open in Terminal** (Windows 10: hold Shift, right-click, **Open PowerShell window here**). Mac: right-click the folder, **New Terminal at Folder**.
 4. **Run these two commands:**
@@ -32,8 +32,13 @@ If you have Claude Code (or the Code tab in the Claude desktop app), paste the p
    - opens the Teable page where you make your token, and shows the 10 boxes to tick (see below)
    - asks you to paste the token, hidden as you paste
    - checks the token works, and **refuses it if it's allowed to delete anything**
-   - adds Teable to Claude: `1` for Claude Code, `2` for the Claude desktop app, `3` for both. Not sure? Pick `3`.
-6. **Restart Claude** (or open a new Claude Code session) and ask it "list my Teable bases".
+   - asks where to add Teable: `1` for Claude Code, `2` for the Claude desktop app, `3` for both. Not sure? Just press Enter, which means both.
+   - for Claude Code, asks **which folder(s)** you use it in, like your ads folder. Paste or drag the folder in (separate several with commas). Teable works in Claude Code **only in those folders**, not in every project, and the token stays out of git.
+
+   Keep the token copied until setup says **Done**. Teable only shows it once, so if setup stops early, run `npm run setup` again and paste the same token.
+6. **Restart Claude**, open Claude Code **in one of the folders you chose**, and ask it "list my Teable bases".
+
+Want Teable in every Claude Code project instead? Run `npm run setup -- --global`. To add a folder later, run `npm run setup` again and give it the new folder as well as the old ones.
 
 ### The token
 
@@ -74,10 +79,10 @@ In Windows PowerShell:
 $env:TEABLE_TOKEN="your-token"; $env:TEABLE_BASE_URL="https://teable.modemobiledaily.com"; npm run live-check
 ```
 
-**Claude Code** (same command everywhere; use the full path to `dist/index.js`):
+**Claude Code** (same command everywhere; use the full path to `dist/index.js`). Run it from inside the folder you want Teable in. `--scope local` keeps it to that folder and out of git. Don't use `--scope project`, which writes your token into a file in the folder, and don't use `--scope user` unless you want Teable in every project:
 
 ```bash
-claude mcp add teable --scope user -e TEABLE_TOKEN=your-token -e TEABLE_BASE_URL=https://teable.modemobiledaily.com -- node /absolute/path/to/teable-mcp/dist/index.js
+claude mcp add teable --scope local -e TEABLE_TOKEN=your-token -e TEABLE_BASE_URL=https://teable.modemobiledaily.com -- node /absolute/path/to/teable-mcp/dist/index.js
 ```
 
 **Claude desktop app** (in the app: Settings, Developer, Edit Config. Mac: `~/Library/Application Support/Claude/claude_desktop_config.json`. Windows: `%APPDATA%\Claude\claude_desktop_config.json`). On Windows write the path with double backslashes, like `C:\\Users\\you\\teable-mcp\\dist\\index.js`:
@@ -104,6 +109,7 @@ If you only want Claude to look, add `TEABLE_READ_ONLY=true` next to the other t
 - **`node` or `npm` is "not recognized" / "command not found":** Node.js isn't installed yet, or the terminal was open before you installed it. Install it (step 1) and open a new terminal.
 - **"unexpected characters" or "invalid header value":** a hidden character came along when the token was copied (a zero-width space, smart quotes, a line break). The server and setup now strip those and say `removed N hidden characters`, so update to the latest version and try again. If it still fails, copy the token again straight from Teable.
 - **Setup says the token can delete:** open it in Teable (Settings, Personal access tokens), untick every box that says Delete, save, and run setup again. Or make a new token with only the 10 boxes.
+- **Claude Code doesn't show the Teable tools:** Teable only works in the folders you picked at setup. Start Claude Code in one of them (run `claude mcp list` there to see Teable). To add another folder, run `npm run setup` again and list it.
 - **Setup says it can't find `claude`:** you don't have Claude Code. Choose `2` to add it to the Claude desktop app instead.
 - **`401`:** the token is wrong or has been regenerated.
 - **`403`:** the token is missing a scope. For a delete, that's on purpose: this token isn't allowed to delete.
@@ -120,11 +126,12 @@ Repo: https://github.com/am-will/teable-mcp (public)
 Our Teable: https://teable.modemobiledaily.com
 I might be on Windows without WSL, so use PowerShell-friendly commands and nothing bash-only.
 
-1. Check that Node.js 20.10 or newer and npm are installed (`node -v` and `npm -v`). If they are missing or too old, tell me, and with my OK install the current LTS version (Windows: `winget install OpenJS.NodeJS.LTS`; Mac: `brew install node`, or the installer from https://nodejs.org). Then use a NEW terminal so it is found.
-2. Download the repo somewhere permanent, like my Documents folder. Use `git clone https://github.com/am-will/teable-mcp.git` if git is installed. Otherwise download and unzip https://github.com/am-will/teable-mcp/archive/refs/heads/main.zip.
-3. In that folder, run `npm install`.
-4. Give me a terminal I can type into (use a terminal panel if you have one; if you can't, tell me exactly how to open one in that folder) and have me run `npm run setup` there. It opens the Teable token page, shows me which 10 boxes to tick (no Delete scopes), and asks me to paste my token at a hidden prompt. Do NOT ask me for the token, do not type it for me, and never write it into a file or a message. Wait until I tell you it has finished. It checks the token, refuses one that can delete, and adds Teable to Claude.
-5. When it says "Done", tell me to restart Claude (or open a new Claude Code session) and ask "list my Teable bases" to test it. If it printed an error, explain it in plain words (401 = wrong token, 403 = missing scope) and help me fix it.
+1. Ask me which folder(s) I use Claude Code in for Teable work (for example my ads folder), and get the full path of each. Teable must work ONLY in those folders, never in every project, so do not use `--scope user` or `--scope project`, and do not use `--global`.
+2. Check that Node.js 20.10 or newer and npm are installed (`node -v` and `npm -v`). If they are missing or too old, tell me, and with my OK install the current LTS version (Windows: `winget install OpenJS.NodeJS.LTS`; Mac: `brew install node`, or the installer from https://nodejs.org). Then use a NEW terminal so it is found.
+3. Download the repo somewhere permanent, like my Documents folder. Use `git clone https://github.com/am-will/teable-mcp.git` if git is installed. Otherwise download and unzip https://github.com/am-will/teable-mcp/archive/refs/heads/main.zip.
+4. In that folder, run `npm install`.
+5. Give me a terminal I can type into (use a terminal panel if you have one; if you can't, tell me exactly how to open one in that folder) and have me run `npm run setup` there. It opens the Teable token page, shows me which 10 boxes to tick (no Delete scopes), and asks me to paste my token at a hidden prompt. Do NOT ask me for the token, do not type it for me, and never write it into a file or a message. Tell me the setup will ask where to add Teable (I can just press Enter for both) and then for the Claude Code folder(s), and give me the exact folder path(s) to paste. Wait until I tell you it has finished. It checks the token, refuses one that can delete, and adds Teable to Claude for those folders only.
+6. When it says "Done", tell me to restart Claude, open Claude Code in one of those folders, and ask "list my Teable bases" to test it. If it printed an error, explain it in plain words (401 = wrong token, 403 = missing scope) and help me fix it. If setup stopped before "Done", have me run `npm run setup` again and paste the same token (Teable only shows it once, so I should keep it copied until Done).
 
 Ask me before installing anything.
 ```
